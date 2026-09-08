@@ -46,3 +46,9 @@ _Example:_
 - To go main branch: `git checkout main`
 - To go other branches: `git checkout backup` 
 
+#### How to compare and merge 2 file branches:
+1. Save & Commit both branches (`git add .` > `git commit -m "edited"`)
+2. Compare & Merge 2 file branches.
+```
+git merge char-backup
+```
