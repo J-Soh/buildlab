@@ -17,7 +17,12 @@
 
 ## How to use git:
 
-#### How to push to server:
+#### How to check if any files are modified:
+```
+git status
+```
+
+#### How to push moified files to server repo:
 ```c
 git add .
 git commit -m "message"
@@ -40,10 +45,14 @@ git checkout -b (name)
 _Example:_
 
 - Backup: `git checkout -b backup`.
-- If working on game character movement: `git checkout -b char-movement`.
+- If working on game character movement: `git checkout -b movement`.
 
 
 #### How to switch different branches:
 - To go main branch: `git checkout main`
 - To go other branches: `git checkout backup` 
 
+#### How to compare and merge branch:
+```
+
+```
