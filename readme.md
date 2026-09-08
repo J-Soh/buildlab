@@ -3,12 +3,12 @@
 
 
 
-## Navigation:
+## Infomation:
 - `Project1` folder contains game dev project.
 
 ---
 
-## How to run game:
+### How to run game:
 - In VS > File > Open > Project/Solution > click `Project1`.
 - `Ctrl + shift + B` > `F5`.
 
@@ -24,12 +24,26 @@ git commit -m "message"
 git push .
 ```
 
-#### To create branch (Format: `git checkout -b (name)`): 
+#### To see all branches : 
+```
+git branch
+```
+- If it shows `*` beside the git branch, that means your currently in this branch.
+
+#### To create branch: 
+```
+git checkout -b (name)
+```
+- The `-b` refers to "create" branch.
+- Without `-b` means to switch to that branch.
+
+_Example:_
+
 - Backup: `git checkout -b backup`.
 - If working on game character movement: `git checkout -b char-movement`.
-- If working on 
+
 
 #### How to switch different branches:
-- To go main: `git switch main`
-- To go other branches: `git checkout -b char-movement`
+- To go main branch: `git checkout main`
+- To go other branches: `git checkout backup` 
 
