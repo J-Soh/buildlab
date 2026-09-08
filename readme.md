@@ -1,3 +1,3 @@
 # Navigation:
 
-- Project1 contains game dev project
+- `Project1` folder contains game dev project
