@@ -1,5 +1,6 @@
 ## TO-DO:
 - Bugs to fix: Checkpoint flag appearing outside of map.
+- Add full screen mode option.
 
 
 ## Infomation:
