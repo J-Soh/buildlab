@@ -47,8 +47,19 @@ _Example:_
 - To go other branches: `git checkout backup` 
 
 #### How to compare and merge 2 file branches:
-1. Save & Commit both branches (`git add .` > `git commit -m "edited"`)
-2. Compare & Merge 2 file branches.
+- If you want to transfer code from main to backup branch:
 ```
+git checkout main 
+git add .
+git commit -m "merge" 
+git checkout backup 
 git merge main
+```
+- If you want to transfer code from backup to main branch:
+```
+git checkout backup 
+git add .
+git commit -m "merge" 
+git checkout main 
+git merge backup
 ```
