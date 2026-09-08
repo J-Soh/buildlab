@@ -2,7 +2,6 @@
 - Bugs to fix: Checkpoint flag appearing outside of map.
 
 
-
 ## Infomation:
 - `Project1` folder contains game dev project.
 
@@ -15,14 +14,9 @@
 
 ---
 
-## How to use git:
+## How to use Git:
 
-#### How to check if any files are modified:
-```
-git status
-```
-
-#### How to push moified files to server repo:
+#### How to push to server:
 ```c
 git add .
 git commit -m "message"
@@ -45,14 +39,10 @@ git checkout -b (name)
 _Example:_
 
 - Backup: `git checkout -b backup`.
-- If working on game character movement: `git checkout -b movement`.
+- If working on game character movement: `git checkout -b char-movement`.
 
 
 #### How to switch different branches:
 - To go main branch: `git checkout main`
 - To go other branches: `git checkout backup` 
 
-#### How to compare and merge branch:
-```
-
-```
