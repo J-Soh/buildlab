@@ -49,18 +49,30 @@ _Example:_
 
 #### How to compare and merge 2 file branches:
 - If you want to transfer code from main to backup branch:
-```
+```c
 git checkout main 
 git add .
 git commit -m "merge" 
+
 git checkout backup 
-git merge main
+git merge main //Transfer code from main to backup branch
 ```
 - If you want to transfer code from backup to main branch:
-```
+```c
 git checkout backup 
 git add .
 git commit -m "merge" 
+
 git checkout main 
-git merge backup
+git merge backup //Transfer code from backup to main branch
+```
+
+#### To delete a branch:
+- Delete the local branch
+```
+git branch -d (name) 
+```
+- Delete the remote branch
+```
+git push origin --delete (name)
 ```
