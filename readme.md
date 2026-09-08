@@ -50,5 +50,5 @@ _Example:_
 1. Save & Commit both branches (`git add .` > `git commit -m "edited"`)
 2. Compare & Merge 2 file branches.
 ```
-git merge char-backup
+git merge main
 ```
