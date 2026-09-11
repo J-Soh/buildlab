@@ -1,6 +1,9 @@
 ## TO-DO:
 - Bugs to fix: Checkpoint flag appearing outside of map.
 - Add full screen mode option.
+- Add Wall-jump to character feature with asset "Wall Jump (32x32)". 
+    - Expand level design with wall jump to reach the top platform.
+    - Change finish line from bottom to top of the wall.
 
 
 ## Infomation:
