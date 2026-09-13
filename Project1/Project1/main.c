@@ -21,7 +21,7 @@ static float SY(float v) { return v * (screenH / refH); }
 static float SF(float v) { return v * (screenH / refH); }
 
 // Ambient background scroll: rises continuously, wraps seamlessly (px/sec)
-#define BG_SCROLL_SPEED 60.0f
+#define BG_SCROLL_SPEED 70.0f
 static float bgScroll = 0.0f;
 
 // State Machine for managing screens
@@ -33,6 +33,7 @@ typedef enum {
 // Global Variables
 static GameState currentState = STATE_MENU;
 static bool showSettings = false; // Toggle to view instructions overlay
+static bool showQuitConfirm = false; // Quit popup on the main menu (ESC -> "Are you sure...?")
 static CP_Image bgImage = NULL;
 static CP_Font gameFont = NULL;
 
@@ -47,8 +48,8 @@ static CP_Image restartBtnImage = NULL;  // gameplay HUD, top-right
 // Pause menu (PixelAdventure style: dim + banner + button panels, world frozen)
 static bool paused = false;
 static int pausePage = 0;  // 0 = main (Resume/Restart/Settings), 1 = audio options
-static float musicVol = 0.6f;
-static float sfxVol = 1.0f;
+static float musicVol = 1.0f;
+static float sfxVol = 0.7f;
 static bool muted = false;  // menu volume-button toggle; overrides both groups
 
 static void apply_volumes(void) {
@@ -62,10 +63,14 @@ static bool isTransitioning = false;
 static float transitionTimer = 0.0f;
 static const float TRANSITION_DURATION = 0.7f; // Transition duration in seconds
 
-// Terrain Tilesheet Handle & Dimensions
+// Terrain Tilesheet Handle & Dimensions (fallback if map.png is missing)
 static CP_Image terrainSheet = NULL;
 static float sheetW = 384.0f; // Width of Terrain (16x16).png
 static float sheetH = 192.0f; // Height of Terrain (16x16).png
+
+// Pre-rendered map (Tiled -> Export as Image at 1x = 3200x1600).
+// Drawn as one camera sub-rect per frame; map.json tile data stays for collision only.
+static CP_Image mapImage = NULL;
 
 // Tilemap Camera (world-pixel position of the viewport's top-left corner)
 static float camX = 0.0f;
@@ -92,8 +97,7 @@ static bool tile_is_bg_fill(int gid) {
 #define PLAYER_HB_H 66.0f
 #define PLAYER_HB_OX 30.0f         // hitbox offset inside drawn sprite
 #define PLAYER_HB_OY 30.0f
-#define MOVE_SPEED 330.0f
-#define SPRINT_SPEED 520.0f
+#define MOVE_SPEED 550.0f
 #define JUMP_VEL -980.0f
 #define DOUBLE_JUMP_VEL -860.0f
 #define GRAVITY 2800.0f
@@ -157,68 +161,84 @@ static Dust dustPool[MAX_DUST];
 // -----------------------------------------------------------------------------
 #define MAX_ENTITIES 72
 typedef enum {
-    ENT_SAW, ENT_SPIKES,
-    ENT_PLANT, ENT_CHICKEN, ENT_BAT, ENT_RINO,
-    ENT_START, ENT_CHECKPOINT, ENT_END,
-    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY,
-    ENT_COUNT
+    ENT_SAW, ENT_SPIKES, // 0-1
+    ENT_PLANT, ENT_CHICKEN, ENT_BAT, ENT_RINO, // 2-5
+    ENT_START, ENT_CHECKPOINT, ENT_END, // 6-8
+    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY, // 9-13
+    ENT_COUNT // 14
 } EntityKind;
 
 typedef struct {
     const char* path;
     const char* altPath;   // flattened / activated variant sheet (checkpoint flag)
+    const char* idlePath;  // optional Idle strip; NULL = reuse path (Chicken/Bat/Rino)
+    const char* runPath;   // optional Run (or Fly) strip; NULL = reuse path
+    const char* hitPath;   // optional one-shot Hit strip; NULL = instant remove on stomp
     int cellW, cellH;      // frame cell size on the sheet (source px)
     float hbW, hbH;        // hitbox as a fraction of the scaled cell
     bool hazard;           // non-living damager (saw, spikes)
-    bool staticBody;       // no patrol / no movement
     bool flies;            // bat: no gravity, hovers
     float speed;           // patrol speed (world px/s); 0 = stationary
     float animFps;         // animation playback speed
 } EntityDef;
 
 static const EntityDef ENTITY_DEFS[ENT_COUNT] = {
-    { "Assets/Traps/Saw/On (38x38).png",        NULL,              38, 38, 0.55f, 0.55f, true,  false, false,   0.0f, 12.0f },
-    { "Assets/Traps/Spikes/Idle.png",           NULL,              16, 16, 0.70f, 0.45f, true,  false, false,   0.0f,  1.0f },
-    { "Assets/Enemies/Plant/Idle (44x42).png",  NULL,              44, 42, 0.60f, 0.60f, false, true,  false,   0.0f,  8.0f },
-    { "Assets/Enemies/Chicken/Run (32x34).png", NULL,              32, 34, 0.68f, 0.68f, false, false, false,  90.0f, 10.0f },
-    { "Assets/Enemies/Bat/Flying (46x30).png",  NULL,              46, 30, 0.60f, 0.60f, false, true,  true,   30.0f,  8.0f },
-    { "Assets/Enemies/Rino/Run (52x34).png",    NULL,              52, 34, 0.68f, 0.68f, false, false, false, 130.0f,  8.0f },
-    { "Assets/Items/Checkpoints/Start/Start (Idle).png", NULL,      64, 64, 0.55f, 0.55f, false, true,  false,   0.0f,  1.0f },
+    { "Assets/Traps/Saw/On (38x38).png",        NULL, NULL, NULL, NULL, 38, 38, 0.55f, 0.55f, true,  false,   0.0f, 12.0f },
+    { "Assets/Traps/Spikes/Idle.png",           NULL, NULL, NULL, NULL, 16, 16, 0.70f, 0.45f, true,  false,   0.0f,  1.0f },
+    { "Assets/Enemies/Plant/Idle (44x42).png",  NULL, NULL, NULL, "Assets/Enemies/Plant/Hit (44x42).png",
+                                                                            44, 42, 0.60f, 0.60f, false, false,   0.0f,  8.0f },
+    { "Assets/Enemies/Chicken/Run (32x34).png", NULL, NULL, NULL, "Assets/Enemies/Chicken/Hit (32x34).png",
+                                                                            32, 34, 0.68f, 0.68f, false, false, 110.0f, 10.0f },
+    { "Assets/Enemies/Bat/Flying (46x30).png",  NULL, "Assets/Enemies/Bat/Idle (46x30).png",
+                                                      "Assets/Enemies/Bat/Flying (46x30).png",
+                                                      "Assets/Enemies/Bat/Hit (46x30).png",
+                                                                            46, 30, 0.60f, 0.60f, false, true,   30.0f,  8.0f },
+    { "Assets/Enemies/Rino/Run (52x34).png",    NULL, NULL, NULL, "Assets/Enemies/Rino/Hit (52x34).png",
+                                                                            52, 34, 0.68f, 0.68f, false, false, 130.0f,  8.0f },
+    { "Assets/Items/Checkpoints/Start/Start (Idle).png", NULL, NULL, NULL, NULL,
+                                                                            64, 64, 0.55f, 0.55f, false, false,   0.0f,  1.0f },
     { "Assets/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
       "Assets/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png",
-      64, 64, 0.55f, 0.55f, false, true, false, 0.0f, 1.0f },
-    { "Assets/Items/Checkpoints/End/End (Idle).png", NULL,         64, 64, 0.55f, 0.55f, false, true,  false,   0.0f,  1.0f },
-    { "Assets/Items/Fruits/Orange.png",     NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Cherries.png",   NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Kiwi.png",       NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Melon.png",      NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Strawberry.png", NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
+      NULL, NULL, NULL,
+      64, 64, 0.55f, 0.55f, false, false, 0.0f, 1.0f },
+    { "Assets/Items/Checkpoints/End/End (Idle).png", NULL, NULL, NULL, NULL,
+                                                                            64, 64, 0.55f, 0.55f, false, false,   0.0f,  1.0f },
+    { "Assets/Items/Fruits/Orange.png",     NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
+    { "Assets/Items/Fruits/Cherries.png",   NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
+    { "Assets/Items/Fruits/Kiwi.png",       NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
+    { "Assets/Items/Fruits/Melon.png",      NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
+    { "Assets/Items/Fruits/Strawberry.png", NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
 };
 
 typedef struct {
     EntityKind kind;
     bool active;
     CP_Image baseImage, altImage;
+    CP_Image idleImg, runImg, hitImg; // per-state strips (NULL = reuse baseImage)
+    CP_Image emergeImg;              // bat only: Ceiling In alert strip on detection
+    int animState;   // 0 = idle/perched, 1 = run/fly, 2 = hit flash, 3 = bat emerging
+    float stateT;    // time in current animState
+    float deathT;    // >0 = stomped, Hit strip playing, counts down to deactivate
     int totalFrames, cellW, cellH;
     float x, y;            // world px, CENTER of the entity
     float sx, sy;          // spawn point (restored on reset)
-    float baseY;           // bat hover baseline
     float w, h;            // world-px hitbox, centered on (x, y)
     float vx, vy;
     int facing;
-    float animT, hoverT;
+    float animT;
     float atkT, coolT;     // plant shooter: attack clock + cooldown
     bool attacking, fired; // attack anim running / bullet released this cycle
     bool grounded;
     bool activated;        // checkpoint reached -> flag out
 } Entity;
 
-static Entity entityPool[MAX_ENTITIES];
-static int entityCount = 0;
+static Entity entityPool[MAX_ENTITIES]; // array of 72 slots (defined in line 158)
+static int entityCount = 0;        // How many used so far (start at 0).
 static float entityScale = 3.0f;   // world px per Tiled px == TILE_SIZE / tileWidth
 
 static bool levelComplete = false;
-static float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px
+static float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px (checkpoint; cleared on fresh start)
+static float startX = -1.0f, startY = -1.0f;      // player CENTER, world px (level start from ENT_START; never cleared)
 
 static CP_Sound playerHitSnd = NULL;  // player stomps an enemy
 static CP_Sound hitSnd = NULL;        // player takes a hit
@@ -236,6 +256,25 @@ static Bullet bullets[MAX_BULLETS];
 typedef struct { bool active; float x, y, t; } BulletFX;
 static BulletFX bulletFx[MAX_BULLET_FX];
 #define BULLET_SPEED 420.0f
+
+// Fruit pickup sparkle: Collected.png (32x32 cells, 6-frame one-shot, like
+// PixelAdventure's CollectedAnimation). Spawned where a fruit is collected,
+// plays once, then frees its slot. Same pool pattern as BulletFX above.
+static CP_Image collectedImg = NULL;
+#define MAX_PICKUP_FX 16
+#define PICKUP_FRAMES 6
+#define PICKUP_FPS 18.0f
+typedef struct { bool active; float x, y, t; } PickupFX;
+static PickupFX pickupFx[MAX_PICKUP_FX];
+static void spawn_pickup_fx(float wx, float wy) {
+    for (int i = 0; i < MAX_PICKUP_FX; i++) {
+        if (!pickupFx[i].active) {
+            pickupFx[i].active = true;
+            pickupFx[i].x = wx; pickupFx[i].y = wy; pickupFx[i].t = 0.0f;
+            return;
+        }
+    }
+}
 
 
 // -----------------------------------------------------------------------------
@@ -299,10 +338,23 @@ static void find_spawn_cell(int* outTx, int* outTy) {
     *outTx = mapWidth / 2; *outTy = mapHeight / 2;
 }
 
+// Fresh start from the beginning: forget checkpoints, then reset.
+// (reset_run alone respawns at the last checkpoint — that stays for death and
+// fell-out-of-world rescues. RESTART buttons and menu PLAY use this instead,
+// so flags, fruits, enemies AND spawn all start over.)
+static void reset_run(void);  // defined just below; fwd so the helper can call it
+static void restart_from_beginning(void) {
+    respawnX = -1.0f; respawnY = -1.0f;
+    reset_run();
+}
+
 static void reset_run(void) {
     if (respawnX > 0.0f && respawnY > 0.0f) {
         player.x = roundf(respawnX - PLAYER_HB_W * 0.5f);
         player.y = roundf(respawnY - PLAYER_HB_H * 0.5f);
+    } else if (startX > 0.0f && startY > 0.0f) {
+        player.x = roundf(startX - PLAYER_HB_W * 0.5f);
+        player.y = roundf(startY - PLAYER_HB_H * 0.5f);
     } else {
         int tx, ty;
         find_spawn_cell(&tx, &ty);
@@ -321,6 +373,7 @@ static void reset_run(void) {
     for (int i = 0; i < MAX_DUST; i++) dustPool[i].active = false;
     for (int i = 0; i < MAX_BULLETS; i++) bullets[i].active = false;
     for (int i = 0; i < MAX_BULLET_FX; i++) bulletFx[i].active = false;
+    for (int i = 0; i < MAX_PICKUP_FX; i++) pickupFx[i].active = false;
 
     // Re-arm every extracted map object at its spawn point (death / restart)
     for (int i = 0; i < entityCount; i++) {
@@ -328,14 +381,18 @@ static void reset_run(void) {
         const EntityDef* def = &ENTITY_DEFS[e->kind];
         e->active = true;
         e->x = e->sx; e->y = e->sy;
-        e->baseY = e->sy;
-        e->vx = (def->speed > 0.0f) ? (((i & 1) == 0) ? -def->speed : def->speed) : 0.0f;
+        if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO) {
+            e->vx = 0.0f;  // facing kept from Tiled spawn; update loop drives movement
+        } else {
+            e->vx = (def->speed > 0.0f) ? (((i & 1) == 0) ? -def->speed : def->speed) : 0.0f;
+            e->facing = e->vx >= 0.0f ? 1 : -1;
+        }
         e->vy = 0.0f;
-        e->facing = e->vx >= 0.0f ? 1 : -1;
         e->grounded = false;
         e->activated = false;
-        e->animT = 0.0f; e->hoverT = 0.0f;
+        e->animT = 0.0f;
         e->atkT = 0.0f; e->coolT = 0.0f; e->attacking = false; e->fired = false;
+        e->animState = (e->kind == ENT_BAT) ? 0 : 1; e->stateT = 0.0f; e->deathT = 0.0f;  // bat back to perch, rest to run, clear Hit
     }
 
     if (respawnSnd) CP_Sound_Play(respawnSnd);
@@ -452,91 +509,133 @@ static EntityKind kind_from_layer_name(const char* name) {
     return ENT_COUNT;
 }
 
-// Instantiate one map-placed object at world coords (map px * entityScale)
-static void spawn_entity(EntityKind kind, float wx, float wy) {
-    if (entityCount >= MAX_ENTITIES || kind >= ENT_COUNT) return;
+// Instantiate one map-placed object at world coords (map px * entityScale).
+// Returns the pool slot, or NULL when full / kind invalid (so the caller can
+// tweak per-object settings like Tiled facing).
+static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
+    // return nothing if entityCount more than 72 (max pool size) or kind invalid.
+    // entityCount is set to 0 initially (line 217)
+    if (entityCount >= MAX_ENTITIES || kind >= ENT_COUNT) return NULL;
 
+    // Look up kind's template (sprite path, cell size, hitbox, speed) from ENTITY_DEFS table
+    // e.g. { "Assets/Items/Fruits/Kiwi.png",  NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
+    // if kind = ENT_FRUIT_KIWI, then &ENTITY_DEFS[ENT_FRUIT_KIWI] will read above comment.
     const EntityDef* def = &ENTITY_DEFS[kind];
+
+    // point to empty index slot to store kind, alive or not, sprites, pos + respawn + hover baseline, hit box, movement, timers/flags 
+    // e.g.  entityCount==0 → e = &entityPool[0], so slot 1 out of 72 is being used. Then entityCount +1 to move next empty slot.
     Entity* e = &entityPool[entityCount++];
-    e->kind = kind;
-    e->active = true;
-    e->baseImage = def->path ? CP_Image_Load(def->path) : NULL;
-    e->altImage = def->altPath ? CP_Image_Load(def->altPath) : NULL;
-    e->cellW = def->cellW;
-    e->cellH = def->cellH;
-    e->totalFrames = 1;
-    if (e->baseImage) {
-        int iw = CP_Image_GetWidth(e->baseImage);
+
+    e->kind = kind; // current type (fruits, trap or animals)
+    e->active = true; // true = alive (so update/draw/collision can process it)
+    e->baseImage = def->path ? CP_Image_Load(def->path) : NULL; // load image's kind sprites (544 x 32 pixels (Kiwi) or 38x38 pixels (Saw))
+    e->altImage = def->altPath ? CP_Image_Load(def->altPath) : NULL; // altImage only used by Checkpoint (NoFlag -> Flag)
+    // Per-state strips (Chicken/Bat/Rino Idle-Run/Fly-Hit, Plant Hit); NULL = reuse baseImage
+    e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL;
+    e->runImg = def->runPath ? CP_Image_Load(def->runPath) : NULL;
+    e->hitImg = def->hitPath ? CP_Image_Load(def->hitPath) : NULL;
+    // Bat-only strip (Ceiling In = alert burst on detection); NULL for the rest.
+    // (Ceiling Out.png is unused for now — say where you want it, e.g. return-home tuck.)
+    if (kind == ENT_BAT) {
+        e->emergeImg = CP_Image_Load("Assets/Enemies/Bat/Ceiling In (46x30).png");
+    } else {
+        e->emergeImg = NULL;
+    }
+    e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;  // start in run/fly state
+    e->cellW = def->cellW; // weight of image (e.g. 32)
+    e->cellH = def->cellH; // height of image (e.g. 32)
+    e->totalFrames = 1;    // updates each frame by 1
+
+    // All fruits images contains sprite. (e.g. Kiwi image contains 544 x 32 pixels)
+    // Image sprite is a single image file that combines multiple smaller images.
+    // We need to extract small images from image sprite.
+    if (e->baseImage) { 
+        int iw = CP_Image_GetWidth(e->baseImage); // 544 pixels
         if (iw > def->cellW) e->totalFrames = iw / def->cellW;
     }
+
+    // Current pos = world px passed in (already x*3.0)
     e->x = wx; e->y = wy;
     e->sx = wx; e->sy = wy;
-    e->baseY = wy;
+
+    // Hitbox size = sprite cell * 3.0 scale * fraction, e.g. Kiwi 32*3*0.65
+    // The reason why add fraction is because PNG has transparent padding around it, 
+    // so hitbox may trigger even when character did not "visually touch" trap or enemies.
     e->w = (float)def->cellW * entityScale * def->hbW;
     e->h = (float)def->cellH * entityScale * def->hbH;
-    e->vx = (def->speed > 0.0f) ? (((entityCount & 1) == 0) ? -def->speed : def->speed) : 0.0f;
-    e->vy = 0.0f;
-    e->facing = e->vx >= 0.0f ? 1 : -1;
-    e->animT = 0.0f; e->hoverT = 0.0f;
-    e->grounded = false;
-    e->activated = false;
-}
 
-// Extract the objects of one objectgroup into the entity pool
-static void parse_object_group_entities(cJSON* layer) {
-    cJSON* nameItem = cJSON_GetObjectItemCaseSensitive(layer, "name");
-    const char* name = (cJSON_IsString(nameItem) && nameItem->valuestring) ? nameItem->valuestring : "";
-    EntityKind kind = kind_from_layer_name(name);
-    if (kind >= ENT_COUNT) return;   // not a kind we manage (fruits etc.)
-
-    cJSON* objects = cJSON_GetObjectItemCaseSensitive(layer, "objects");
-    if (!cJSON_IsArray(objects)) return;
-
-    int n = cJSON_GetArraySize(objects);
-    for (int i = 0; i < n; i++) {
-        cJSON* obj = cJSON_GetArrayItem(objects, i);
-        if (!obj) continue;
-        cJSON* x = cJSON_GetObjectItemCaseSensitive(obj, "x");
-        cJSON* y = cJSON_GetObjectItemCaseSensitive(obj, "y");
-        if (cJSON_IsNumber(x) && cJSON_IsNumber(y)) {
-            spawn_entity(kind, (float)x->valuedouble * entityScale, (float)y->valuedouble * entityScale);
-        }
+    // Ground markers are authored as points ON the ground surface in Tiled:
+    // lift the center so the sprite's feet rest at the point. Without this the
+    // middle of the sprite sits at the point and half the checkpoint pole /
+    // spike sinks under the tiles (see spike&cp.png).
+    if (kind == ENT_START || kind == ENT_CHECKPOINT || kind == ENT_END || kind == ENT_SPIKES) {
+        e->y -= (float)def->cellH * entityScale * 0.5f;  // seat feet at the point
+        e->sy = e->y;
     }
-}
 
-// Recurse through the layer tree: read the tile layer + all objectgroups
-static void process_layers_world(cJSON* layers) {
-    if (!cJSON_IsArray(layers)) return;
-
-    int n = cJSON_GetArraySize(layers);
-    for (int l = 0; l < n; l++) {
-        cJSON* layer = cJSON_GetArrayItem(layers, l);
-        if (!layer) continue;
-
-        cJSON* type = cJSON_GetObjectItemCaseSensitive(layer, "type");
-        if (!cJSON_IsString(type) || !type->valuestring) continue;
-
-        if (strcmp(type->valuestring, "tilelayer") == 0) {
-            cJSON* data = cJSON_GetObjectItemCaseSensitive(layer, "data");
-            if (cJSON_IsArray(data)) {
-                int dataSize = cJSON_GetArraySize(data);
-                if (mapData) free(mapData);
-                mapData = (int*)malloc(sizeof(int) * dataSize);
-                for (int i = 0; i < dataSize; i++) {
-                    cJSON* tile = cJSON_GetArrayItem(data, i);
-                    if (cJSON_IsNumber(tile)) mapData[i] = tile->valueint;
+    // Animals are plotted ~1 tile above the ground in Tiled: drop them so their
+    // feet rest exactly on top of the first solid tile (no floating, no half-buried).
+    // Needs mapData, so the Map tilelayer must come before Enemies in map.json layers.
+    if (mapData && (kind == ENT_CHICKEN || kind == ENT_RINO || kind == ENT_PLANT)) {
+        float halfH2 = e->h * 0.5f;
+        float bottom = e->y + halfH2;
+        if (is_solid_px(e->x, bottom)) {
+            // Half-way inside a tile: pop straight up onto its top
+            e->y = ((int)(bottom / TILE_SIZE)) * TILE_SIZE - halfH2 - 0.01f;
+        } else {
+            // Floating: scan down (max 3 tiles) and sit on the first solid top
+            for (float d = 4.0f; d <= TILE_SIZE * 3.0f; d += 4.0f) {
+                if (is_solid_px(e->x, bottom + d)) {
+                    e->y = ((int)((bottom + d) / TILE_SIZE)) * TILE_SIZE - halfH2 - 0.01f;
+                    break;
                 }
             }
         }
-        else if (strcmp(type->valuestring, "objectgroup") == 0) {
-            parse_object_group_entities(layer);
-        }
-        else if (strcmp(type->valuestring, "group") == 0) {
-            cJSON* sub = cJSON_GetObjectItemCaseSensitive(layer, "layers");
-            if (cJSON_IsArray(sub)) process_layers_world(sub);
-        }
+        e->sy = e->y;
+        e->vy = 0.0f;
+        e->grounded = true;
     }
+
+    // Bat sleeper: tuck into the nearest ceiling (solid tile bottom) above the
+    // plotted point, so it hangs off real tiles instead of open air by the
+    // window edge. Perch is stored into sx/sy, so reset_run and the RETURN leg
+    // both aim at the same ceiling. Needs mapData (Map layer before Enemies).
+    if (kind == ENT_BAT && mapData) {
+        float surface = 0.0f;  // world-y of the ceiling's bottom edge
+        for (float d = 0.0f; d <= TILE_SIZE * 10.0f; d += 4.0f) {
+            float py = wy - d;
+            if (is_solid_px(wx, py)) { surface = ((int)(py / TILE_SIZE) + 1) * TILE_SIZE; break; }
+        }
+        if (surface > 0.0f) {
+            e->x = wx; e->y = surface + e->h * 0.45f;  // body tucked just under the ceiling
+        } else {
+            e->x = wx; e->y = wy;  // open sky above: hover where plotted (old behavior)
+        }
+        e->sx = e->x; e->sy = e->y;
+        e->animState = 0;  // start perched on the ceiling (Idle art)
+    }
+
+    // Patrol velocity: 
+    // 1st ?: if speed>0 (Chicken 90, Rino 130), go to 2nd `?`. Else vx = 0.
+    // 2nd ?: alternate -speed/+speed by even/odd count.
+    // (Chicken/Rino facing can still be overridden per-object by Tiled object name
+    // in parse_object_group_entities, and reset_run preserves it.)
+    e->vx = (def->speed > 0.0f) ? (((entityCount & 1) == 0) ? -def->speed : def->speed) : 0.0f;
+
+    // Start with zero velocity speed
+    e->vy = 0.0f;
+
+    // Face movement direction (1=right, -1=left for sprite mirror)
+    e->facing = e->vx >= 0.0f ? 1 : -1;
+
+    // Reset anim/hover timers and state flags
+    // (seated animals above already start grounded = true)
+    e->animT = 0.0f;
+    if (kind != ENT_CHICKEN && kind != ENT_RINO && kind != ENT_PLANT) e->grounded = false;
+    e->activated = false;
+    return e;
 }
+
 
 // Seeds fly straight, pop into pieces on tiles, hurt on touch (iframe-gated)
 static void hurt_player(void);  // fwd: defined with collisions below
@@ -591,6 +690,12 @@ static void draw_bullets(void) {
 #define ENT_GRAVITY 2400.0f
 #define ENT_MAX_FALL 950.0f
 
+// Bat sleeper tuning (world px; 48px = 1 tile). BAT_AGGRO_RADIUS is the chase
+// trigger around the bat — raise for earlier ambushes, lower for later ones.
+#define BAT_AGGRO_RADIUS 344.0f  // Wake up bat if player is within 8 tiles.
+#define BAT_CHASE_SPEED 150.0f   // world px/s toward the player / back to perch
+#define BAT_EMERGE_TIME 0.45f    // Ceiling In alert length before the chase
+
 // Move every living object (gravity + patrol; bats hover; traps stay put)
 static void update_entities(float dt) {
     for (int i = 0; i < entityCount; i++) {
@@ -599,10 +704,56 @@ static void update_entities(float dt) {
 
         const EntityDef* def = &ENTITY_DEFS[e->kind];
         e->animT += dt;
+        e->stateT += dt;
+
+        // Dying (stomped): freeze, play one-shot Hit strip in draw, then deactivate
+        if (e->deathT > 0.0f) {
+            e->deathT -= dt;
+            if (e->deathT <= 0.0f) e->active = false;
+            continue;
+        }
+
+        // Hit flash after hurting the PLAYER (stomp-deaths use deathT instead):
+        // hold ~0.5s, then fall back to run/fly; per-kind logic below re-picks Idle.
+        if (e->animState == 2 && e->stateT > 0.5f) { e->animState = 1; e->stateT = 0.0f; }
 
         if (def->flies) {
-            e->hoverT += dt;
-            e->y = e->baseY + sinf(e->hoverT * 2.2f) * 16.0f;  // gentle bob
+            // Bat sleeper: Idle on the ceiling (state 0) until the player enters
+            // BAT_AGGRO_RADIUS, Ceiling In alert burst (one-shot, state 3), chase
+            // on the Flying strip (state 1), and drift back to the perch + Idle
+            // again when the player leaves. Perch and trigger are tile/player
+            // anchored — never the window edge.
+            // (state 2 = Hit flash: frozen here, the timer above expires it.)
+            float pcx = player.x + PLAYER_HB_W * 0.5f;
+            float pcy = player.y + PLAYER_HB_H * 0.5f;
+            float dx = pcx - e->x, dy = pcy - e->y;
+            float dist = sqrtf(dx * dx + dy * dy);
+            if (e->animState == 0) {  // perched
+                e->vx = 0.0f; e->vy = 0.0f;
+                if (dist < BAT_AGGRO_RADIUS && !levelComplete) { e->animState = 3; e->stateT = 0.0f; }
+            } else if (e->animState == 3) {  // Ceiling In alert burst
+                if (e->stateT > BAT_EMERGE_TIME) { e->animState = 1; e->stateT = 0.0f; }
+            } else if (e->animState == 1) {  // flying: chase player, else drift home
+                float tx, ty;
+                if (dist < BAT_AGGRO_RADIUS * 1.5f && !levelComplete) { tx = pcx; ty = pcy; }
+                else { tx = e->sx; ty = e->sy; }  // perch (ceiling), stored at spawn
+                float mx = tx - e->x, my = ty - e->y;
+                float ml = sqrtf(mx * mx + my * my);
+                if (ml > 1.0f) {
+                    float nx = e->x + mx / ml * BAT_CHASE_SPEED * dt;
+                    float ny = e->y + my / ml * BAT_CHASE_SPEED * dt;
+                    // Axis-separated: stop at solid tiles, never enter them
+                    if (!is_solid_px(nx + ((mx > 0.0f) ? e->w * 0.5f : -e->w * 0.5f), e->y)) e->x = nx;
+                    if (!is_solid_px(e->x, ny + ((my > 0.0f) ? e->h * 0.5f : -e->h * 0.5f))) e->y = ny;
+                    e->facing = (mx >= 0.0f) ? 1 : -1;
+                }
+                // Home under the perch and player gone -> snap in, back to Idle
+                float hx = e->sx - e->x, hy = e->sy - e->y;
+                if (dist >= BAT_AGGRO_RADIUS * 1.5f && sqrtf(hx * hx + hy * hy) < 10.0f) {
+                    e->x = e->sx; e->y = e->sy;
+                    e->animState = 0; e->stateT = 0.0f;
+                }
+            }
             continue;
         }
 
@@ -664,16 +815,38 @@ static void update_entities(float dt) {
             e->grounded = false;
         }
 
-        // Patrol: walk, reverse at walls and ledges
-        if (e->grounded && def->speed > 0.0f) {
-            e->x += e->vx * dt;
-            float fx = (e->vx > 0.0f) ? e->x + e->w * 0.5f : e->x - e->w * 0.5f;
-            bool wall = is_solid_px(fx, e->y - halfH * 0.6f) || is_solid_px(fx, e->y + 2.0f);
-            float ahead = e->x + ((e->vx > 0.0f) ? (e->w * 0.5f + 4.0f) : -(e->w * 0.5f + 4.0f));
-            bool ledge = !is_solid_px(ahead, e->y + halfH + 6.0f);
-            if (wall || ledge) {
-                e->vx = -e->vx;
-                e->facing = e->vx > 0.0f ? 1 : -1;
+        // Chicken/Rino: always patrol-walk left and right on the Run strip
+        // (no Idle); charge the player on the Run strip when seen;
+        // Hit strip flashes right after hurting the player.
+        // (The old generic patrol block below is gone: Chicken/Rino were its only
+        // walkers — Bat flies and Plant attacks, both handled above.)
+        if ((e->kind == ENT_CHICKEN || e->kind == ENT_RINO) && e->grounded) {
+            float pcx = player.x + PLAYER_HB_W * 0.5f;
+            float pcy = player.y + PLAYER_HB_H * 0.5f;
+            float dx = pcx - e->x, dy = pcy - e->y;
+            // "in front": player on the facing side, close, roughly level with the enemy
+            bool seen = !levelComplete && ((dx * (float)e->facing) > 0.0f)
+                     && fabsf(dx) < 480.0f && fabsf(dy) < 110.0f;
+            if (e->animState == 2) {
+                e->vx = 0.0f;  // impact freeze; the timer above expires the flash
+            } else {
+                e->animState = 1;  // Run strip always (no Idle)
+                if (seen) e->facing = (dx >= 0.0f) ? 1 : -1;  // face the player to charge
+                // Patrol-walk when unseen, 2.5x charge when seen (Chicken 225, Rino 325)
+                e->vx = (float)e->facing * def->speed * (seen ? 2.5f : 1.0f);
+                // Step forward: reverse at walls/ledges on patrol, stop on charge
+                // (no reverse, no suicide jumps)
+                float nx = e->x + e->vx * dt;
+                float fx = (e->vx > 0.0f) ? nx + e->w * 0.5f : nx - e->w * 0.5f;
+                bool wall = is_solid_px(fx, e->y - halfH * 0.6f) || is_solid_px(fx, e->y + 2.0f);
+                float ahead = nx + ((e->vx > 0.0f) ? (e->w * 0.5f + 4.0f) : -(e->w * 0.5f + 4.0f));
+                bool ledge = !is_solid_px(ahead, e->y + halfH + 6.0f);
+                if (wall || ledge) {
+                    if (seen) { /* charge stops */ }
+                    else { e->vx = -e->vx; e->facing = e->vx > 0.0f ? 1 : -1; }
+                } else {
+                    e->x = nx;
+                }
             }
         }
     }
@@ -711,6 +884,7 @@ static void check_player_entity_collisions(void) {
     for (int i = 0; i < entityCount; i++) {
         Entity* e = &entityPool[i];
         if (!e->active) continue;
+        if (e->deathT > 0.0f) continue;  // already stomped: Hit strip playing, no more hits
 
         const EntityDef* def = &ENTITY_DEFS[e->kind];
         float hx = e->x - e->w * 0.5f, hy = e->y - e->h * 0.5f;
@@ -736,6 +910,7 @@ static void check_player_entity_collisions(void) {
         if (e->kind >= ENT_FRUIT_ORANGE && e->kind <= ENT_FRUIT_STRAWBERRY) {
             if (aabb_overlap(px, py, pw, ph, hx, hy, e->w, e->h)) {
                 e->active = false;
+                spawn_pickup_fx(e->x, e->y);  // Collected sparkle at the fruit's center
                 if (coinSnd) CP_Sound_Play(coinSnd);
             }
             continue;
@@ -753,7 +928,14 @@ static void check_player_entity_collisions(void) {
         float playerBottom = py + ph;
         float entTop = e->y - e->h * 0.5f;
         if (player.vy > 80.0f && playerBottom <= entTop + 16.0f) {
-            e->active = false;
+            if (e->hitImg) {
+                // Stomped: freeze + play one-shot Hit strip, removed when deathT hits 0
+                e->animState = 2; e->stateT = 0.0f; e->deathT = 0.45f;
+                e->vx = 0.0f; e->vy = 0.0f;
+                e->attacking = false; e->fired = false;
+            } else {
+                e->active = false;
+            }
             if (playerHitSnd) CP_Sound_Play(playerHitSnd);  // player stomped an enemy
             for (int k = 0; k < 5; k++)
                 spawn_dust(e->x + (float)((k % 3) - 1) * 14.0f, e->y - e->h * 0.2f,
@@ -762,6 +944,9 @@ static void check_player_entity_collisions(void) {
             player.jumps = 1;
             player.doubleAnim = false;
         } else {
+            // Enemy hurt the PLAYER (not a stomp): flash its Hit strip briefly.
+            // Rino Hit (52x34).png triggers here; stomp-death is the branch above.
+            if (e->hitImg) { e->animState = 2; e->stateT = 0.0f; }
             hurt_player();
         }
     }
@@ -778,11 +963,37 @@ static void render_entities(void) {
         const EntityDef* def = &ENTITY_DEFS[e->kind];
         CP_Image img = e->baseImage;
         if (e->kind == ENT_CHECKPOINT && e->activated && e->altImage) img = e->altImage;
-        bool plantFiring = (e->kind == ENT_PLANT && e->attacking && plantAtkImg);
+        bool plantFiring = (e->kind == ENT_PLANT && e->attacking && e->deathT <= 0.0f && plantAtkImg);
         if (plantFiring) img = plantAtkImg;
+        // Multi-state enemies (Bat Idle/Fly + Chicken/Rino/Bat/Plant Hit): pick strip
+        // by animState, then recount frames from that strip's width (strips differ
+        // in length). Skipped while the Plant fires so the Attack strip always wins.
+        // (Found by audit: without the !plantFiring guard the baseImage fallback
+        // below stole the image back and the Attack art never showed.)
+        bool hasStates = !plantFiring && (e->idleImg || e->runImg || e->hitImg);
+        // Bat sleeper strips: 0 = Idle while perched on the ceiling,
+        // 3 = Ceiling In alert burst on detection, 1 = chase/return (Flying),
+        // 2 = Hit. Falls back to Flying if a file is missing.
+        if (!plantFiring && e->kind == ENT_BAT && e->emergeImg) {
+            if (e->animState == 2 && e->hitImg) img = e->hitImg;
+            else if (e->animState == 3 && e->emergeImg) img = e->emergeImg;
+            else if (e->animState == 0 && e->idleImg) img = e->idleImg;
+            else if (e->runImg) img = e->runImg;
+            else if (e->baseImage) img = e->baseImage;
+        }
+        else if (hasStates) {
+            if (e->animState == 2 && e->hitImg) img = e->hitImg;
+            else if (e->animState == 0 && e->idleImg) img = e->idleImg;
+            else if (e->animState == 1 && e->runImg) img = e->runImg;
+            else if (e->baseImage) img = e->baseImage;
+        }
         if (!img) continue;
 
         int frames = e->totalFrames;
+        if (hasStates && img != e->baseImage && img != plantAtkImg) {
+            int iw2 = CP_Image_GetWidth(img);
+            frames = (iw2 > e->cellW) ? iw2 / e->cellW : 1;
+        }
         if (e->kind == ENT_CHECKPOINT)
             frames = e->activated ? (CP_Image_GetWidth(img) / e->cellW) : 1;
         if (plantFiring) frames = 8;  // Attack strip
@@ -792,6 +1003,12 @@ static void render_entities(void) {
         if (plantFiring) animFps = 12.0f;
         int frame = (frames > 1) ? (((int)(e->animT * animFps)) % frames) : 0;
         if (plantFiring) { frame = (int)(e->atkT * 12.0f); if (frame > 7) frame = 7; }  // synced to release
+        // Hit is one-shot (PixelAdventure style): hold on the last frame until deathT removes it
+        if (hasStates && e->animState == 2) {
+            frame = (int)(e->stateT * 10.0f);
+            if (frame > frames - 1) frame = frames - 1;
+            if (frame < 0) frame = 0;
+        }
 
         // Fruits are drawn at the tile footprint, like their map objects
         bool isFruit = e->kind >= ENT_FRUIT_ORANGE && e->kind <= ENT_FRUIT_STRAWBERRY;
@@ -799,6 +1016,12 @@ static void render_entities(void) {
         float dh = isFruit ? TILE_SIZE : (float)e->cellH * entityScale;
         float sx = roundf(e->x - dw * 0.5f - camX);
         float sy = roundf(e->y - dh * 0.5f - camY);
+        // Chicken/Rino/Plant art is taller than its hitbox, so center-drawing sank
+        // their legs into tiles (see animal.png). Anchor these at the feet instead:
+        // sprite bottom = hitbox bottom, which physics keeps on the tile top.
+        // (Checkpoints/Spikes were fixed the other way: lifted at spawn + centered draw.)
+        if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO || e->kind == ENT_PLANT)
+            sy = roundf(e->y + e->h * 0.5f - dh - camY);
         if (sx < -192.0f || sx > SCREEN_WIDTH + 192.0f ||
             sy < -192.0f || sy > SCREEN_HEIGHT + 192.0f) continue;
 
@@ -810,57 +1033,147 @@ static void render_entities(void) {
     }
 }
 
+// Extract objects of one objectgroup leaf (e.g. "Kiwi") into entity pool
+static void parse_object_group_entities(cJSON* layer) {
+    // Get "name" field from this layer dict, e.g. {"name":"Kiwi","type":"objectgroup","objects":[...]}
+    // where "objects":[...] contains [{"x":1310,"y":867},{"x":1717,"y":889}...]
+    cJSON* nameItem = cJSON_GetObjectItemCaseSensitive(layer, "name"); // nameItem = "Kiwi"
+
+    // Safely extract C-string; if missing/non-string use "" to avoid NULL crash
+    // e.g. return "" if nameItem = "".
+    const char* name = (cJSON_IsString(nameItem) && nameItem->valuestring) ? nameItem->valuestring : "";
+
+    // Map leaf name -> EntityKind via kind_from_layer_name()
+    // e.g. "Kiwi"->ENT_FRUIT_KIWI, "Saw"->ENT_SAW,
+    EntityKind kind = kind_from_layer_name(name);
+    if (kind >= ENT_COUNT) return;   // unknown name returns ENT_COUNT -> skip (nothing to spawn)
+
+    // Get "objects position" array from this leaf
+    // e.g. Multiple Kiwi fruits have positions of [{"x":1310,"y":867},{"x":1717,"y":889}...]
+    cJSON* objects = cJSON_GetObjectItemCaseSensitive(layer, "objects");
+    if (!cJSON_IsArray(objects)) return;
+
+    // Count how many kiwi fruits placed in tiled eidtor.
+    // e.g. [{"x":1310,"y":867},{"x":1717,"y":889}] = 2 kiwi fruits.
+    int n = cJSON_GetArraySize(objects);
+
+    // For each Kiwi, get it's X & Y coordinates
+    for (int i = 0; i < n; i++) {
+        // Get i-th point dict, e.g. {"x":1310,"y":867,"point":true}
+        cJSON* obj = cJSON_GetArrayItem(objects, i);
+        if (!obj) continue;
+
+        // Get object coordinates (Kiwi position at "x":1310,"y":867).
+        cJSON* x = cJSON_GetObjectItemCaseSensitive(obj, "x");
+        cJSON* y = cJSON_GetObjectItemCaseSensitive(obj, "y");
+
+        // spawn one entity at world pos = Tiled px * 3.0 to match 16px->48px map; (or else fruits would spawn off scaled map)
+        // size is scaled inside spawn_entity()
+        if (cJSON_IsNumber(x) && cJSON_IsNumber(y)) {
+            // Format: spawn_entity(kind, x position, y position);
+            Entity* se = spawn_entity(kind, (float)x->valuedouble * entityScale, (float)y->valuedouble * entityScale);
+            // Initial facing for Chicken/Rino comes from the OBJECT name in Tiled
+            // (layer name "Chicken" picks the kind; point name picks facing):
+            // select the point -> Properties -> Name -> "left" or "right".
+            // Blank name = alternating default. This answers "which chicken faces where".
+            if (se && (kind == ENT_CHICKEN || kind == ENT_RINO)) {
+                cJSON* oname = cJSON_GetObjectItemCaseSensitive(obj, "name");
+                const char* on = (cJSON_IsString(oname) && oname->valuestring) ? oname->valuestring : "";
+                if (strstr(on, "left")) se->facing = -1;
+                else if (strstr(on, "right")) se->facing = 1;
+                se->vx = 0.0f;  // update loop drives vx from facing from now on
+            }
+        }
+    }
+}
+
+// Get map tile layer (Grid map structure built by `tileSheet` + obj location points groups)
+static void process_layers_world(cJSON* layers) {
+    if (!cJSON_IsArray(layers)) return;
+
+    // Find number of layers (n) (1 layer = map Structure, 2nd layer = fruit objects location)
+    int n = cJSON_GetArraySize(layers);
+    for (int l = 0; l < n; l++) {
+        // (1st loop) layers[0] -> 1st item. (2nd loop) layers[1] -> 2nd item.
+        cJSON* layer = cJSON_GetArrayItem(layers, l);
+        if (!layer) continue;
+
+        // "type": "tilelayer" (refers to main map design) or "type": "objectgroup" (refers to object props in map)
+        cJSON* type = cJSON_GetObjectItemCaseSensitive(layer, "type");
+
+        // skip loop if type (layer) does not exist or type contains no string 
+        if (!cJSON_IsString(type) || !type->valuestring) continue;
+        
+        // Get map structure:
+        // string == "tilelayer" (map design level)
+        // strcmp(A, B) == 0 means True.
+        if (strcmp(type->valuestring, "tilelayer") == 0) {
+            cJSON* data = cJSON_GetObjectItemCaseSensitive(layer, "data");
+            if (cJSON_IsArray(data)) {
+                int dataSize = cJSON_GetArraySize(data); // No. of GIDs
+                if (mapData) free(mapData);
+                mapData = (int*)malloc(sizeof(int) * dataSize); // buffer
+                if (mapData == NULL) {
+                    // if Memory allocation failed, return nothing.
+                    return;
+                }
+
+                // Copy each GID into `mapData` buffer
+                for (int i = 0; i < dataSize; i++) {
+                    // Get GIDs tile number.
+                    cJSON* tile = cJSON_GetArrayItem(data, i);
+                    // Convert from JSON format to C lanuage format.
+                    if (cJSON_IsNumber(tile)) mapData[i] = tile->valueint;
+                }
+            }
+        }
+        // objectgroup (contains fruits (kiwi, melon etc), enemies (plant, chicken etc), checkpoints (start, end)), trap (saw, spikes)
+        else if (strcmp(type->valuestring, "objectgroup") == 0) {
+            parse_object_group_entities(layer);
+        }
+        // group contain Folders of Fruit, Enemies, Trap, Checkpoint.
+        else if (strcmp(type->valuestring, "group") == 0) {
+            cJSON* sub = cJSON_GetObjectItemCaseSensitive(layer, "layers");
+            if (cJSON_IsArray(sub)) process_layers_world(sub);
+        }
+    }
+}
+
 // Loads and parses map.json exported from Tiled using cJSON
 static void load_map_json(const char* filepath) {
     FILE* file = fopen(filepath, "rb"); //default path is at OutDir/Assets/Terrain/map.json
-    if (!file) { // if failed to open map .json, try fallbacks (open in different file path)
-        printf("FAILED to open map: %s, trying fallbacks...\n", filepath);
-        // Fallbacks for different VS working-dir setups
-        const char* fallbacks[] = {
-            "../Assets/Terrain/map.json",
-            "../../Assets/Terrain/map.json",
-            "Terrain/map.json",
-            "map.json"
-        };
-        for (int i = 0; i < 4 && !file; i++) {
-            file = fopen(fallbacks[i], "rb");
-            if (file) printf("Opened map via fallback: %s\n", fallbacks[i]);
-        }
-        if (!file) return;
-    }
 
-    // Find the length of the file 
-    fseek(file, 0, SEEK_END);
-    long length = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    // Create a buffer (that can hold entire map.json size):
+    fseek(file, 0, SEEK_END); // moves file current position to file's end (to get total size of file)
+    long length = ftell(file); // ftell =  gives the current position in bytes
+    fseek(file, 0, SEEK_SET); // moves file end position back to start position.
+    char* buffer = (char*)malloc((size_t)length + 1); // +1 to put null terminator `\0'` at the end of buffer.
 
-    // Dynamically allocates memory to store the file's raw text
-    char* buffer = (char*)malloc((size_t)length + 1);
-    if (!buffer) {
-        fclose(file);
-        return;
-    }
-
-    // Reads the file's contents into your allocated buffer
+    // Copies map.json file content into buffer
+    // buffer now contains raw JSON text structure
+    // buffer = // [ JSON ][ JSON ] ... [ JSON ][ ? ] (last byte is empty)
     fread(buffer, 1, length, file);
-    buffer[length] = '\0';
+    buffer[length] = '\0'; // place `\0'` at the end of buffer. This indicates end of the C string.
     fclose(file);
 
-    // Parses the raw string buffer into a structured cJSON tree object
+    // cJSON take & understand this raw JSON text structure so that you can obtain dimensions (width, height) etc.
     cJSON* json = cJSON_Parse(buffer);
     free(buffer);
     if (!json) return;
 
-    cJSON* width = cJSON_GetObjectItemCaseSensitive(json, "width");
-    cJSON* height = cJSON_GetObjectItemCaseSensitive(json, "height");
-    cJSON* tilew = cJSON_GetObjectItemCaseSensitive(json, "tilewidth");
-    cJSON* tileh = cJSON_GetObjectItemCaseSensitive(json, "tileheight");
+    // Get map dimensions
+    cJSON* width = cJSON_GetObjectItemCaseSensitive(json, "width"); //"width": 200 
+    cJSON* height = cJSON_GetObjectItemCaseSensitive(json, "height"); //"height": 100
+    cJSON* tilew = cJSON_GetObjectItemCaseSensitive(json, "tilewidth"); //"tilewidth": 16
+    cJSON* tileh = cJSON_GetObjectItemCaseSensitive(json, "tileheight"); //"tileheight": 16
 
+    // Sometimes after getting dimensions (width etc) does not guarantee a number.
+    // Thus, we do `(cJSON_IsNumber(width))` to check if it is a number.
+    // We convert JSON format `"width": 200` to C format `mapWidth = 200`
     if (cJSON_IsNumber(width)) mapWidth = width->valueint;
     if (cJSON_IsNumber(height)) mapHeight = height->valueint;
     if (cJSON_IsNumber(tilew)) tileWidth = tilew->valueint;
     if (cJSON_IsNumber(tileh)) tileHeight = tileh->valueint;
-    if (tileWidth > 0) entityScale = TILE_SIZE / (float)tileWidth;
 
     cJSON* layers = cJSON_GetObjectItemCaseSensitive(json, "layers");
     if (cJSON_IsArray(layers)) {
@@ -869,7 +1182,7 @@ static void load_map_json(const char* filepath) {
 
     cJSON_Delete(json);
 
-    {  // per-kind breakdown so map points can be verified in the console
+    {  // per-kind breakdown so map points can be verified in the console (CP_Engine_Run(1); to show below printf message)
         int counts[ENT_COUNT] = { 0 };
         for (int i = 0; i < entityCount; i++)
             if (entityPool[i].kind < ENT_COUNT) counts[entityPool[i].kind]++;
@@ -883,9 +1196,22 @@ static void load_map_json(const char* filepath) {
 
 // Renders the tilemap parsed from map.json using Terrain (16x16).png
 static void render_map_json(void) {
-    if (!mapData || !terrainSheet) return;
-
     CP_Settings_ImageMode(CP_POSITION_CORNER);
+
+    // Pre-rendered map (like PixelAdventure's map.png): 1 draw of the camera's
+    // sub-rect. map.png is a 1x Tiled export (3200x1600), so map-px = world-px / entityScale.
+    // mapData/map.json is still loaded and used for collision only.
+    if (mapImage) {
+        float s = (entityScale > 0.0f) ? entityScale : 3.0f;
+        float sx0 = camX / s, sy0 = camY / s;
+        float sw = SCREEN_WIDTH / s, sh = SCREEN_HEIGHT / s;
+        CP_Image_DrawSubImage(mapImage, 0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT,
+                              sx0, sy0, sx0 + sw, sy0 + sh, 255);
+        return;
+    }
+
+    // Fallback: per-tile render from the tilesheet map.json (only if map.png missing)
+    if (!mapData || !terrainSheet) return;
     int tilesPerRowInSheet = (int)(sheetW / tileWidth);
     if (tilesPerRowInSheet < 1) tilesPerRowInSheet = 1;
 
@@ -949,6 +1275,7 @@ static void draw_transition(void) {
 
 // Draws the Title Screen UI
 static void draw_cream_panel(float cx, float cy, float w, float h);  // defined with pause menu below
+static void draw_quit_confirm(void);  // defined after draw_menu_ui; fwd so the menu can overlay it
 static void draw_menu_ui(void) {
     float centerX = SCREEN_WIDTH * 0.5f;
     float centerY = SCREEN_HEIGHT * 0.5f;
@@ -974,9 +1301,8 @@ static void draw_menu_ui(void) {
 
         CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
         CP_Settings_TextSize(panelH * 0.064f);
-        CP_Font_DrawText("A / D  -  Move Left / Right", centerX, panelTop + panelH * 0.38f);
-        CP_Font_DrawText("SHIFT  -  Hold to Sprint", centerX, panelTop + panelH * 0.48f);
-        CP_Font_DrawText("SPACE  -  Jump / Double Jump", centerX, panelTop + panelH * 0.58f);
+        CP_Font_DrawText("A / D  -  Move Left / Right", centerX, panelTop + panelH * 0.43f);
+        CP_Font_DrawText("SPACE  -  Jump / Double Jump", centerX, panelTop + panelH * 0.55f);
 
         CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
         CP_Settings_TextSize(panelH * 0.056f);
@@ -991,6 +1317,10 @@ static void draw_menu_ui(void) {
         CP_Settings_Fill(CP_Color_Create(80, 80, 80, 255));
         CP_Settings_TextSize(panelH * 0.056f);
         CP_Font_DrawText("Press [ SPACE ] or click PLAY button to Start", centerX, panelTop + panelH * 0.36f);
+
+        CP_Settings_Fill(CP_Color_Create(120, 120, 120, 255));
+        CP_Settings_TextSize(panelH * 0.044f);
+        CP_Font_DrawText("Press [ ESC ] to Quit", centerX, panelTop + panelH * 0.44f);
 
         float btnSize = panelH * 0.128f;
         float btnY = panelTop + panelH * 0.58f;
@@ -1017,18 +1347,104 @@ static void draw_menu_ui(void) {
             CP_Image_Draw(settingsBtnImage, centerX - (btnSize * 0.5f) + btnOffset, btnY, btnSize, btnSize, 255);
         }
     }
+
+    draw_quit_confirm();  // ESC popup overlays everything on the menu (no-op unless open)
+}
+
+// Quit-confirm popup (main menu only): dim + cream card + YES / NO.
+// Geometry is in design px via SX/SY; handle_quit_confirm_input() below must
+// use these same numbers for its click boxes.
+static float quit_yes_x0(void) { return SX(400.0f); }
+static float quit_yes_x1(void) { return SX(560.0f); }
+static float quit_no_x0(void) { return SX(680.0f); }
+static float quit_no_x1(void) { return SX(840.0f); }
+static float quit_btn_y0(void) { return SY(404.0f); }
+static float quit_btn_y1(void) { return SY(456.0f); }
+static float quit_btn_yc(void) { return SY(430.0f); }
+
+static void draw_quit_confirm(void) {
+    if (!showQuitConfirm) return;
+
+    // Dark overlay over the menu (same look as the pause menu dim)
+    CP_Settings_RectMode(CP_POSITION_CORNER);
+    CP_Settings_Fill(CP_Color_Create(0, 0, 0, 140));
+    CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    // Card
+    draw_cream_panel(SCREEN_WIDTH * 0.5f, SY(360.0f), SX(560.0f), SY(250.0f));
+    if (gameFont) CP_Font_Set(gameFont);
+    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+
+    CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
+    CP_Settings_TextSize(SF(52.0f));
+    CP_Font_DrawText("QUIT GAME?", SCREEN_WIDTH * 0.5f, SY(300.0f));
+
+    CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
+    CP_Settings_TextSize(SF(30.0f));
+    CP_Font_DrawText("Are you sure you want to quit?", SCREEN_WIDTH * 0.5f, SY(348.0f));
+
+    // YES / NO buttons (hover highlight + label, pause-menu style)
+    float mx = CP_Input_GetMouseX();
+    float my = CP_Input_GetMouseY();
+    bool hovYes = mx >= quit_yes_x0() && mx <= quit_yes_x1() && my >= quit_btn_y0() && my <= quit_btn_y1();
+    bool hovNo = mx >= quit_no_x0() && mx <= quit_no_x1() && my >= quit_btn_y0() && my <= quit_btn_y1();
+
+    CP_Settings_RectMode(CP_POSITION_CORNER);
+    if (hovYes) {
+        CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
+        CP_Graphics_DrawRect(quit_yes_x0(), quit_btn_y0(), quit_yes_x1() - quit_yes_x0(), quit_btn_y1() - quit_btn_y0());
+    }
+    if (hovNo) {
+        CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
+        CP_Graphics_DrawRect(quit_no_x0(), quit_btn_y0(), quit_no_x1() - quit_no_x0(), quit_btn_y1() - quit_btn_y0());
+    }
+    CP_Settings_TextSize(SF(36.0f));
+    CP_Settings_Fill(hovYes ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("YES", (quit_yes_x0() + quit_yes_x1()) * 0.5f, quit_btn_yc());
+    CP_Settings_Fill(hovNo ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("NO", (quit_no_x0() + quit_no_x1()) * 0.5f, quit_btn_yc());
 }
 
 // Handles input during the menu screen
 static void handle_menu_input(void) {
     if (isTransitioning) return;
 
-    if (CP_Input_KeyTriggered(KEY_SPACE)) {
+    // ESC opens the quit popup (main page only); ESC again closes it.
+    // Y / ENTER confirms quit, N cancels. Popup blocks SPACE-start below.
+    if (CP_Input_KeyTriggered(KEY_ESCAPE)) {
+        if (showQuitConfirm) showQuitConfirm = false;
+        else if (!showSettings) {
+            showQuitConfirm = true;
+            if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
+        }
+    }
+    if (showQuitConfirm) {
+        if (CP_Input_KeyTriggered(KEY_Y) || CP_Input_KeyTriggered(KEY_ENTER)) {
+            CP_Engine_Terminate();  // YES: quit the game
+            return;
+        }
+        if (CP_Input_KeyTriggered(KEY_N)) { showQuitConfirm = false; return; }
+    }
+
+    if (CP_Input_KeyTriggered(KEY_SPACE) && !showQuitConfirm) {
         isTransitioning = true;
         transitionTimer = 0.0f;
     }
 
     if (CP_Input_MouseClicked()) {
+        // Popup open: only YES / NO count; menu buttons underneath are blocked.
+        if (showQuitConfirm) {
+            float mx = CP_Input_GetMouseX();
+            float my = CP_Input_GetMouseY();
+            if (mx >= quit_yes_x0() && mx <= quit_yes_x1() && my >= quit_btn_y0() && my <= quit_btn_y1()) {
+                CP_Engine_Terminate();  // YES: quit the game
+            }
+            else if (mx >= quit_no_x0() && mx <= quit_no_x1() && my >= quit_btn_y0() && my <= quit_btn_y1()) {
+                showQuitConfirm = false;  // NO: back to menu
+                play_click();
+            }
+            return;
+        }
         float centerX = SCREEN_WIDTH * 0.5f;
         float panelW = SCREEN_WIDTH * 0.62f;
         float panelH = SCREEN_HEIGHT * 0.70f;
@@ -1108,13 +1524,21 @@ void game_init(void) {
         sheetH = (float)CP_Image_GetHeight(terrainSheet);
     }
 
+    // Pre-rendered map (Tiled -> Export as Image). One draw per frame; tile loop below is fallback.
+    mapImage = CP_Image_Load("Assets/Terrain/map.png");
+    if (mapImage) printf("Map image loaded: %dx%d\n", CP_Image_GetWidth(mapImage), CP_Image_GetHeight(mapImage));
+    else printf("Map image missing, falling back to tile render\n");
+
     load_map_json("Assets/Terrain/map.json");
 
-    // New run starts at the first "Start" checkpoint placed in the map
+    // New run starts at the first "Start" checkpoint placed in the map.
+    // Stored separately from the checkpoint respawn so fresh starts survive
+    // restart_from_beginning() clearing respawnX/Y (that wipe caused the
+    // player to fall back to find_spawn_cell and drop out of the map).
     for (int i = 0; i < entityCount; i++) {
         if (entityPool[i].kind == ENT_START) {
-            respawnX = entityPool[i].x;
-            respawnY = entityPool[i].y;
+            startX = entityPool[i].x;
+            startY = entityPool[i].y;
             break;
         }
     }
@@ -1128,6 +1552,7 @@ void game_init(void) {
     shadowImg = CP_Image_Load("Assets/Other/Shadow.png");
     dustImg = CP_Image_Load("Assets/Other/Dust Particle.png");
     heartImg = CP_Image_Load("Assets/Main Characters/Hearts.png");
+    collectedImg = CP_Image_Load("Assets/Items/Fruits/Collected.png");  // 32x32 x6 pickup sparkle
 
     // Audio: streamed music + one-shot SFX
     menuMusic = CP_Sound_LoadMusic("Assets/Sound/menu_music.wav");
@@ -1270,7 +1695,7 @@ static void handle_pause_input(void) {
             float ry = pause_row_y(i);
             if (mx >= SX(450.0f) && mx <= SX(830.0f) && my >= ry - SY(28.0f) && my <= ry + SY(28.0f)) {
                 if (i == 0) paused = false;                    // RESUME
-                else if (i == 1) { reset_run(); paused = false; }  // RESTART
+                else if (i == 1) { restart_from_beginning(); paused = false; }  // RESTART: from beginning
                 else { pausePage = 1; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // OPTIONS
                 play_click();
                 return;
@@ -1357,7 +1782,7 @@ void game_update(void) {
         }
 
         if (!paused) {
-            if (!runStarted) { reset_run(); runStarted = true; }
+            if (!runStarted) { restart_from_beginning(); runStarted = true; }  // menu PLAY: from beginning
             bgScroll += BG_SCROLL_SPEED * dt;
             if (musicMode != 2 && worldMusic) {
                 CP_Sound_StopGroup(CP_SOUND_GROUP_MUSIC);
@@ -1366,14 +1791,12 @@ void game_update(void) {
             }
 
             if (!levelComplete) {
-            // --- Input: A/D move, SHIFT sprint, SPACE jump/double ---
+            // --- Input: A/D move, SPACE jump/double (single move speed) ---
             bool left = CP_Input_KeyDown(KEY_A);
             bool right = CP_Input_KeyDown(KEY_D);
-            bool sprint = CP_Input_KeyDown(KEY_LEFT_SHIFT) || CP_Input_KeyDown(KEY_RIGHT_SHIFT);
-            float runSpeed = sprint ? SPRINT_SPEED : MOVE_SPEED;
             if (player.lockT > 0.0f) player.vx = player.kbx;
-            else if (left && !right) { player.vx = -runSpeed; player.facing = -1; }
-            else if (right && !left) { player.vx = runSpeed; player.facing = 1; }
+            else if (left && !right) { player.vx = -MOVE_SPEED; player.facing = -1; }
+            else if (right && !left) { player.vx = MOVE_SPEED; player.facing = 1; }
             else player.vx = 0.0f;
 
             if (CP_Input_KeyTriggered(KEY_SPACE)) player.buffer = JUMP_BUFFER;
@@ -1414,10 +1837,10 @@ void game_update(void) {
 
             player_physics(dt);
 
-            // --- Footsteps + run dust (quicker steps while sprinting) ---
+            // --- Footsteps + run dust ---
             if (player.grounded && (player.vx > 20.0f || player.vx < -20.0f)) {
                 player.stepT += dt;
-                if (player.stepT >= (sprint ? 0.22f : 0.30f)) {
+                if (player.stepT >= 0.30f) {
                     player.stepT = 0.0f;
                     if (stepSnd) CP_Sound_Play(stepSnd);
                     spawn_dust(player.x + PLAYER_HB_W * 0.5f - 16.0f * (float)player.facing, player.y + PLAYER_HB_H - 4.0f, -60.0f * (float)player.facing, -50.0f, 0.4f, 18.0f);
@@ -1433,6 +1856,13 @@ void game_update(void) {
                 dustPool[i].x += dustPool[i].vx * dt;
                 dustPool[i].y += dustPool[i].vy * dt;
                 dustPool[i].vy -= 300.0f * dt;
+            }
+
+            // --- Pickup sparkles (Collected one-shot, 6 frames then slot frees) ---
+            for (int i = 0; i < MAX_PICKUP_FX; i++) {
+                if (!pickupFx[i].active) continue;
+                pickupFx[i].t += dt;
+                if (pickupFx[i].t >= (float)PICKUP_FRAMES / PICKUP_FPS) pickupFx[i].active = false;
             }
 
             // --- Camera follows player, clamped + pixel-snapped ---
@@ -1531,6 +1961,20 @@ void game_update(void) {
             CP_Image_DrawSubImage(dustImg, roundf(dustPool[i].x - s * 0.5f - camX), roundf(dustPool[i].y - s * 0.5f - camY), s, s, 0.0f, 0.0f, u, v, alpha);
         }
 
+        // Pickup sparkle (Collected one-shot, drawn at the fruit's TILE_SIZE footprint)
+        if (collectedImg) {
+            for (int i = 0; i < MAX_PICKUP_FX; i++) {
+                if (!pickupFx[i].active) continue;
+                int frame = (int)(pickupFx[i].t * PICKUP_FPS);
+                if (frame > PICKUP_FRAMES - 1) frame = PICKUP_FRAMES - 1;
+                float sx = roundf(pickupFx[i].x - TILE_SIZE * 0.5f - camX);
+                float sy = roundf(pickupFx[i].y - TILE_SIZE * 0.5f - camY);
+                if (sx < -64.0f || sx > SCREEN_WIDTH + 64.0f ||
+                    sy < -64.0f || sy > SCREEN_HEIGHT + 64.0f) continue;
+                draw_sheet_frame(collectedImg, 32, 32, frame, sx, sy, TILE_SIZE, TILE_SIZE, 1, 255);
+            }
+        }
+
         // HUD: hearts row (top-left)
         if (heartImg) {
             for (int i = 0; i < MAX_HEARTS; i++)
@@ -1558,17 +2002,17 @@ void game_update(void) {
         }
 
         if (!paused) {
-            // Restart button (top-right): click = respawn + reset score
-            if (restartBtnImage) {
-                float rx = SCREEN_WIDTH - SX(64.0f);
-                float ry = SY(16.0f);
-                float rsize = SX(48.0f);
-                bool hover = is_mouse_over(rx, ry, rsize, rsize);
-                float rs = hover ? rsize + SX(6.0f) : rsize;
-                float ro = (rs - rsize) * 0.5f;
-                CP_Image_Draw(restartBtnImage, rx - ro, ry - ro, rs, rs, 255);
-                if (hover && CP_Input_MouseClicked()) { play_click(); reset_run(); }
-            }
+                // Restart button (top-right): click = fresh run from the beginning
+                if (restartBtnImage) {
+                    float rx = SCREEN_WIDTH - SX(64.0f);
+                    float ry = SY(16.0f);
+                    float rsize = SX(48.0f);
+                    bool hover = is_mouse_over(rx, ry, rsize, rsize);
+                    float rs = hover ? rsize + SX(6.0f) : rsize;
+                    float ro = (rs - rsize) * 0.5f;
+                    CP_Image_Draw(restartBtnImage, rx - ro, ry - ro, rs, rs, 255);
+                    if (hover && CP_Input_MouseClicked()) { play_click(); restart_from_beginning(); }
+                }
 
             // Options button (top-right, left of restart): opens the pause menu
             if (settingsBtnImage) {
@@ -1606,6 +2050,7 @@ void game_exit(void) {
     if (restartBtnImage) CP_Image_Free(restartBtnImage);
     if (transitionImage) CP_Image_Free(transitionImage);
     if (terrainSheet) CP_Image_Free(terrainSheet);
+    if (mapImage) CP_Image_Free(mapImage);
     if (playerIdle) CP_Image_Free(playerIdle);
     if (playerRun) CP_Image_Free(playerRun);
     if (playerJump) CP_Image_Free(playerJump);
@@ -1614,9 +2059,14 @@ void game_exit(void) {
     if (shadowImg) CP_Image_Free(shadowImg);
     if (dustImg) CP_Image_Free(dustImg);
     if (heartImg) CP_Image_Free(heartImg);
+    if (collectedImg) CP_Image_Free(collectedImg);
     for (int i = 0; i < entityCount; i++) {
         if (entityPool[i].baseImage) CP_Image_Free(entityPool[i].baseImage);
         if (entityPool[i].altImage) CP_Image_Free(entityPool[i].altImage);
+        if (entityPool[i].idleImg) CP_Image_Free(entityPool[i].idleImg);
+        if (entityPool[i].runImg) CP_Image_Free(entityPool[i].runImg);
+        if (entityPool[i].hitImg) CP_Image_Free(entityPool[i].hitImg);
+        if (entityPool[i].emergeImg) CP_Image_Free(entityPool[i].emergeImg);
     }
     if (plantAtkImg) CP_Image_Free(plantAtkImg);
     if (bulletImg) CP_Image_Free(bulletImg);
@@ -1638,6 +2088,6 @@ void game_exit(void) {
 
 int main(void) {
     CP_Engine_SetNextGameState(game_init, game_update, game_exit);
-    CP_Engine_Run(0);
+    CP_Engine_Run(1); // opens console window (for debug print messages)
     return 0;
 }

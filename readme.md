@@ -6,8 +6,19 @@
     - Change finish line from bottom to top of the wall.
 
 
-## Infomation:
+## Current features of the game:
 - `Project1` folder contains game dev project.
+- Enemies (Rino, chicken)
+    - When enemies sees player in front of them, their speed increase and move towards him.
+    - If an enemy hits player, decrease health by 1.
+    - If player jumps on top of them, enemy is defeated.
+- Controls:
+    - Space to jump.
+    - A & D to move left and right.
+
+- How level design map is produced:
+    - Map was pre-rendered with map.png exported from tile editor.
+    - Enemies (Rino, chicken, Bat), traps (saw), checkpoints are marked in tile editor. So this is exported as map.json, which is then extracted into the game coordinates for each items.
 
 ---
 
