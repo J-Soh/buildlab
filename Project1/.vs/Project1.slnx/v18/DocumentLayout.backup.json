@@ -92,7 +92,7 @@
               "RelativeDocumentMoniker": "Project1\\main.c",
               "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c",
               "RelativeToolTip": "Project1\\main.c",
-              "ViewState": "AgIAALQAAAAAAAAAAAAcwMkAAAAsAAAAAAAAAA==",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAwBUAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2026-09-07T14:37:49.568Z",
               "EditorCaption": ""
@@ -110,6 +110,16 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            }
+          ]
+        },
+        {
+          "DockedHeight": 172,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
             }
           ]
         }
