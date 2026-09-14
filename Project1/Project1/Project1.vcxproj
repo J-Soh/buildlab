@@ -116,6 +116,7 @@ xcopy "$(SolutionDir)Extern\CProcessing\lib\x64\fmod.dll" "$(OutDir)" /s /r /y /
     <ClCompile Include="audio.c" />
     <ClCompile Include="cJSON.c" />
     <ClCompile Include="entity.c" />
+    <ClCompile Include="game.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="map.c" />
     <ClCompile Include="player.c" />
