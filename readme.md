@@ -81,6 +81,12 @@ git checkout main
 git merge backup //Transfer code from backup to main branch
 ```
 
+#### To pull a branch from remote:
+```
+git checkout --track origin/backup
+git checkout --track origin/singleFile
+```
+
 #### To delete a branch:
 - Delete the local branch
 ```
