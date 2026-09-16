@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Workflow\\Repo\\buildlab\\Project1\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\audio.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\audio.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\main.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
@@ -11,16 +15,8 @@
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\ui.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\map.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\map.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\entity.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\entity.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -29,68 +25,57 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedHeight": 203,
-          "SelectedChildIndex": 4,
+          "DockedHeight": 104,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "player.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\player.c",
-              "RelativeDocumentMoniker": "Project1\\player.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\player.c",
-              "RelativeToolTip": "Project1\\player.c",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAM4AAAAAAAAAAAAAAA==",
+              "DocumentIndex": 0,
+              "Title": "audio.c",
+              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\audio.c",
+              "RelativeDocumentMoniker": "Project1\\audio.c",
+              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\audio.c",
+              "RelativeToolTip": "Project1\\audio.c",
+              "ViewState": "AgIAABMAAAAAAAAAAAAAwBwAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-09-13T10:23:04.029Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "entity.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\entity.c",
-              "RelativeDocumentMoniker": "Project1\\entity.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\entity.c",
-              "RelativeToolTip": "Project1\\entity.c",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-09-13T10:22:49.206Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "map.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\map.c",
-              "RelativeDocumentMoniker": "Project1\\map.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\map.c",
-              "RelativeToolTip": "Project1\\map.c",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAHEAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-09-13T10:20:00.706Z",
+              "WhenOpened": "2026-09-14T15:57:06.962Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
+              "Title": "game.c",
+              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c",
+              "RelativeDocumentMoniker": "Project1\\game.c",
+              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c",
+              "RelativeToolTip": "Project1\\game.c",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2026-09-14T15:50:58.117Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "ui.c",
               "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\ui.c",
               "RelativeDocumentMoniker": "Project1\\ui.c",
               "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\ui.c",
               "RelativeToolTip": "Project1\\ui.c",
-              "ViewState": "AgIAAGIBAAAAAAAAAAAAADMAAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAADkAAAAAAAAAAAAAAIoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2026-09-13T10:17:43.285Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "main.c",
               "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c",
               "RelativeDocumentMoniker": "Project1\\main.c",
               "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c",
               "RelativeToolTip": "Project1\\main.c",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACIAAAAwAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2026-09-07T14:37:49.568Z",
               "EditorCaption": ""
@@ -98,7 +83,7 @@
           ]
         },
         {
-          "DockedHeight": 15,
+          "DockedHeight": 114,
           "SelectedChildIndex": -1,
           "Children": [
             {
@@ -116,6 +101,16 @@
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            }
+          ]
+        },
+        {
+          "DockedHeight": 172,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
             }
           ]
         }
