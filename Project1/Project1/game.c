@@ -1680,14 +1680,16 @@ void game_update(void) {
 
 void game_exit(void) {
     // Free allocated memory on shutdown. menu_exit runs on every menu->game
-    // switch (menu can be revisited) so it frees nothing — menu-owned art
-    // goes through menu_free_assets() here, once, at terminate.
+    // switch (menu can be revisited) so it frees nothing — menu button art
+    // (extern from menu.h) is freed inline here, once, at terminate.
     // NOTE: game_exit ALSO runs on every quit-to-menu (engine exits the old
     // state on switch), so every pointer freed here is set back to NULL and
     // entityCount to 0. Otherwise menu_init/game_init reload guards see stale
     // non-NULL handles, skip reloading, and the menu draws freed memory
     // (that use-after-free was the finish-game crash).
-    menu_free_assets();  // play/vol buttons (menu-owned; NULLs itself)
+    if (playBtnImage) CP_Image_Free(playBtnImage);
+    if (volBtnImage) CP_Image_Free(volBtnImage);
+    playBtnImage = NULL; volBtnImage = NULL;
     if (bgImage) CP_Image_Free(bgImage);
     if (gameFont) CP_Font_Free(gameFont);
     bgImage = NULL; gameFont = NULL;

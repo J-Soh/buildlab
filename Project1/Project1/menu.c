@@ -3,9 +3,9 @@
 #include "menu.h"
 #include "game.h"
 
-// --- Menu-owned button art (freed via menu_free_assets at terminate) ---
-static CP_Image playBtnImage = NULL;
-static CP_Image volBtnImage = NULL;
+// --- Menu button art (shared with game_exit, which frees them at terminate) ---
+CP_Image playBtnImage = NULL;
+CP_Image volBtnImage = NULL;
 
 // Menu page state
 static bool showSettings = false; // Toggle to view instructions overlay
@@ -77,15 +77,7 @@ void menu_update(void) {
 
 void menu_exit(void) {
     // Intentionally frees nothing: shared assets (font, sounds) belong to the
-    // game state, and menu art is freed once via menu_free_assets() below.
-}
-
-void menu_free_assets(void) {
-    // Called once from game_exit at terminate (NOT from menu_exit, which runs
-    // on every menu->game switch while the menu may be revisited).
-    if (playBtnImage) CP_Image_Free(playBtnImage);
-    if (volBtnImage) CP_Image_Free(volBtnImage);
-    playBtnImage = NULL; volBtnImage = NULL;
+    // game state, and button art is freed inline in game_exit at terminate.
 }
 
 // Draws the Title Screen UI
