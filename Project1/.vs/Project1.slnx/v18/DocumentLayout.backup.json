@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "C:\\Workflow\\Repo\\buildlab\\Project1\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\main.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -13,42 +13,40 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedHeight": 306,
+          "DockedHeight": 6,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:2:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            }
+          ]
+        },
+        {
+          "DockedHeight": 6,
           "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "main.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c",
-              "RelativeDocumentMoniker": "Project1\\main.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\main.c",
-              "RelativeToolTip": "Project1\\main.c",
-              "ViewState": "AgIAAIoGAAAAAAAAAAAqwKQGAAAXAAAAAAAAAA==",
+              "Title": "game.c",
+              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c",
+              "RelativeDocumentMoniker": "Project1\\game.c",
+              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c",
+              "RelativeToolTip": "Project1\\game.c",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAAgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-09-07T14:37:49.568Z",
+              "WhenOpened": "2026-09-26T06:23:34.622Z",
               "EditorCaption": ""
-            }
-          ]
-        },
-        {
-          "DockedHeight": 15,
-          "SelectedChildIndex": -1,
-          "Children": [
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
             },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
-            }
-          ]
-        },
-        {
-          "DockedHeight": 70,
-          "SelectedChildIndex": -1,
-          "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
