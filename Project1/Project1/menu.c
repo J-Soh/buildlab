@@ -99,6 +99,7 @@ static void draw_menu_ui(void) {
     float panelH = SCREEN_HEIGHT * 0.70f;
     float panelTop = centerY - panelH * 0.5f;
 
+    // Format: (x-axis, y-axis, width, height)
     draw_cream_panel(centerX, centerY, panelW, panelH); // defined in utils.c
 
     if (gameFont) { // activate font
@@ -167,16 +168,6 @@ static void draw_menu_ui(void) {
 }
 
 // Quit-confirm popup (main menu only): dim + cream card + YES / NO.
-// Geometry is in fixed 1600x900 px; handle_menu_input() below must
-// use these same numbers for its click boxes.
-static float quit_yes_x0(void) { return 400.0f; }
-static float quit_yes_x1(void) { return 560.0f; }
-static float quit_no_x0(void) { return 680.0f; }
-static float quit_no_x1(void) { return 840.0f; }
-static float quit_btn_y0(void) { return 404.0f; }
-static float quit_btn_y1(void) { return 456.0f; }
-static float quit_btn_yc(void) { return 430.0f; }
-
 static void draw_quit_confirm(void) {
     if (!showQuitConfirm) return;
 
@@ -186,6 +177,7 @@ static void draw_quit_confirm(void) {
     CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Card
+    // Format: (x-axis, y-axis, width, height)
     draw_cream_panel(SCREEN_WIDTH * 0.5f, 360.0f, 560.0f, 250.0f);
     if (gameFont) CP_Font_Set(gameFont);
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
@@ -194,30 +186,31 @@ static void draw_quit_confirm(void) {
     CP_Settings_TextSize(52.0f);
     CP_Font_DrawText("QUIT GAME?", SCREEN_WIDTH * 0.5f, 300.0f);
 
-    CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
+    CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255)); // Dark charcoal gray text color
     CP_Settings_TextSize(30.0f);
     CP_Font_DrawText("Are you sure you want to quit?", SCREEN_WIDTH * 0.5f, 348.0f);
 
     // YES / NO buttons (hover highlight + label, pause-menu style)
-    float mx = CP_Input_GetMouseX();
-    float my = CP_Input_GetMouseY();
-    bool hovYes = mx >= quit_yes_x0() && mx <= quit_yes_x1() && my >= quit_btn_y0() && my <= quit_btn_y1();
-    bool hovNo = mx >= quit_no_x0() && mx <= quit_no_x1() && my >= quit_btn_y0() && my <= quit_btn_y1();
-
     CP_Settings_RectMode(CP_POSITION_CORNER);
-    if (hovYes) {
+    // Format: is_mouse_over(x-axis, y-axis, rect width, rect height)
+    // Check if mouse is over "YES" or "NO" button for "QUIT menu" card.
+    if (is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f)) { // "Yes" button
+        // draw orange near-transparent color rect when user mouse hovers over it
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(quit_yes_x0(), quit_btn_y0(), quit_yes_x1() - quit_yes_x0(), quit_btn_y1() - quit_btn_y0());
+        CP_Graphics_DrawRect(580.0f, 404.0f, 160.0f, 52.0f);
     }
-    if (hovNo) {
+    if (is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f)) { // "NO" Button
+        // draw orange near-transparent color rect when user mouse hovers over it
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(quit_no_x0(), quit_btn_y0(), quit_no_x1() - quit_no_x0(), quit_btn_y1() - quit_btn_y0());
+        CP_Graphics_DrawRect(860.0f, 404.0f, 160.0f, 52.0f);
     }
-    CP_Settings_TextSize(36.0f);
-    CP_Settings_Fill(hovYes ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("YES", (quit_yes_x0() + quit_yes_x1()) * 0.5f, quit_btn_yc());
-    CP_Settings_Fill(hovNo ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("NO", (quit_no_x0() + quit_no_x1()) * 0.5f, quit_btn_yc());
+
+    CP_Settings_TextSize(38.0f);
+    // Change Text "Yes" or "No" color from dark charcoal gray to Orange if mouse hover over one of them. Else, they stayed dark charcoal gray.
+    CP_Settings_Fill(is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("YES", (1320.0f * 0.5f), 430);
+    CP_Settings_Fill(is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("NO", (1880 * 0.5f), 430);
 }
 
 // Handles input during the menu screen (PLAY/SPACE enters the game immediately)
@@ -246,12 +239,10 @@ static void handle_menu_input(void) {
     if (CP_Input_MouseClicked()) {
         // Popup open: only YES / NO count; menu buttons underneath are blocked.
         if (showQuitConfirm) {
-            float mx = CP_Input_GetMouseX();
-            float my = CP_Input_GetMouseY();
-            if (mx >= quit_yes_x0() && mx <= quit_yes_x1() && my >= quit_btn_y0() && my <= quit_btn_y1()) {
+            if (is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f)) {
                 CP_Engine_Terminate();  // YES: quit the game
             }
-            else if (mx >= quit_no_x0() && mx <= quit_no_x1() && my >= quit_btn_y0() && my <= quit_btn_y1()) {
+            else if (is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f)) {
                 showQuitConfirm = false;  // NO: back to menu
                 play_click();
             }

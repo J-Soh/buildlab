@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "C:\\Workflow\\Repo\\buildlab\\Project1\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\menu.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\menu.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -13,7 +13,7 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedHeight": 6,
+          "DockedHeight": 317,
           "SelectedChildIndex": -1,
           "Children": [
             {
@@ -37,14 +37,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "game.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c",
-              "RelativeDocumentMoniker": "Project1\\game.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c",
-              "RelativeToolTip": "Project1\\game.c",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAAgAAAAAAAAAA==",
+              "Title": "menu.c",
+              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\menu.c",
+              "RelativeDocumentMoniker": "Project1\\menu.c",
+              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\menu.c",
+              "RelativeToolTip": "Project1\\menu.c",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-09-26T06:23:34.622Z",
+              "WhenOpened": "2026-09-26T07:26:45.499Z",
               "EditorCaption": ""
             },
             {

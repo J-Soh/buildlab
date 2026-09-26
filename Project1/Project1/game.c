@@ -1242,7 +1242,7 @@ static void draw_pause_menu(void) {
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
     // Banner
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 140.0f, 420.0f, 96.0f);
+    draw_cream_panel(SCREEN_WIDTH * 0.5f, 140.0f, 420.0f, 96.0f); // defined in utils.c
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(54.0f);
     CP_Font_DrawText(pausePage == 0 ? "PAUSED" : "OPTIONS", SCREEN_WIDTH * 0.5f, 140.0f);
@@ -1257,13 +1257,13 @@ static void draw_pause_menu(void) {
         const char* rows[] = { "RESUME", "RESTART", "OPTIONS" };
         for (int i = 0; i < 3; i++) {
             float ry = pause_row_y(i);
-            bool hover = mx >= 450.0f && mx <= 830.0f && my >= ry - 28.0f && my <= ry + 28.0f;
-            if (hover) {
+            // bool hover = mx >= 450.0f && mx <= 830.0f && my >= ry - 28.0f && my <= ry + 28.0f;
+            if (is_mouse_over(450.0f, ry - 28.0f, 380.0f, 56.0f)) {
                 CP_Settings_RectMode(CP_POSITION_CORNER);
                 CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
                 CP_Graphics_DrawRect(450.0f, ry - 28.0f, 380.0f, 56.0f);
             }
-            CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+            CP_Settings_Fill(is_mouse_over(450.0f, ry - 28.0f, 380.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
             CP_Font_DrawText(rows[i], SCREEN_WIDTH * 0.5f, ry);
         }
     }
