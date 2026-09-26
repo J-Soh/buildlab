@@ -1233,7 +1233,7 @@ void game_init(void) {
 static float pause_row_y(int i) { return 310.0f + (float)i * 70.0f; }
 
 static void draw_pause_menu(void) {
-    // Dark overlay over the frozen world (PixelAdventure uses 0,0,0,128)
+// Dark overlay over the frozen world
     CP_Settings_RectMode(CP_POSITION_CORNER);
     CP_Settings_Fill(CP_Color_Create(0, 0, 0, 140));
     CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -1242,61 +1242,77 @@ static void draw_pause_menu(void) {
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
     // Banner
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 140.0f, 420.0f, 96.0f); // defined in utils.c
+    draw_cream_panel(SCREEN_WIDTH * 0.5f, 140.0f, 420.0f, 96.0f);
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(54.0f);
     CP_Font_DrawText(pausePage == 0 ? "PAUSED" : "OPTIONS", SCREEN_WIDTH * 0.5f, 140.0f);
 
-    float mx = CP_Input_GetMouseX();
-    float my = CP_Input_GetMouseY();
+    float rect_x = 610.0f; 
+    float rect_w = 380.0f;
 
     // Top panel
     draw_cream_panel(SCREEN_WIDTH * 0.5f, 380.0f, 440.0f, 300.0f);
     CP_Settings_TextSize(40.0f);
+
     if (pausePage == 0) {
         const char* rows[] = { "RESUME", "RESTART", "OPTIONS" };
         for (int i = 0; i < 3; i++) {
             float ry = pause_row_y(i);
-            // bool hover = mx >= 450.0f && mx <= 830.0f && my >= ry - 28.0f && my <= ry + 28.0f;
-            if (is_mouse_over(450.0f, ry - 28.0f, 380.0f, 56.0f)) {
+            // "RESUME", "RESTART", "OPTIONS"
+            if (is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f)) {
                 CP_Settings_RectMode(CP_POSITION_CORNER);
                 CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-                CP_Graphics_DrawRect(450.0f, ry - 28.0f, 380.0f, 56.0f);
+                CP_Graphics_DrawRect(rect_x, ry - 28.0f, rect_w, 56.0f);
             }
-            CP_Settings_Fill(is_mouse_over(450.0f, ry - 28.0f, 380.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+            CP_Settings_Fill(is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
             CP_Font_DrawText(rows[i], SCREEN_WIDTH * 0.5f, ry);
         }
     }
-    else {
+    else { // OPTIONS area:
         // Audio rows: label + [-] value [+]
         const char* rows[] = { "MUSIC", "SFX", "BACK" };
         for (int i = 0; i < 3; i++) {
             float ry = pause_row_y(i);
             if (i < 2) {
-                // Audio row centered on the panel (panel spans 420-860, center 640):
-                // label 490 | [-] 606-654 | value 698 | [+] 742-789.
+                // Centered coordinates: shifted +160px
                 float vol = (i == 0) ? musicVol : sfxVol;
-                bool hovMinus = mx >= 606.0f && mx <= 654.0f && my >= ry - 24.0f && my <= ry + 24.0f;
-                bool hovPlus = mx >= 742.0f && mx <= 790.0f && my >= ry - 24.0f && my <= ry + 24.0f;
+                
+                float minus_x = 787.0f;  
+                float plus_x  = 922.0f;  
+                float val_x   = 878.0f;  
+                float label_x = 670.0f;  
+
+                bool hovMinus = is_mouse_over(minus_x, ry - 24.0f, 48.0f, 48.0f);
+                bool hovPlus  = is_mouse_over(plus_x, ry - 24.0f, 48.0f, 48.0f);
+
                 CP_Settings_RectMode(CP_POSITION_CORNER);
+                
+                // [-] Button
                 CP_Settings_Fill(hovMinus ? CP_Color_Create(215, 140, 40, 160) : CP_Color_Create(40, 40, 40, 40));
-                CP_Graphics_DrawRect(606.0f, ry - 24.0f, 48.0f, 48.0f);
+                CP_Graphics_DrawRect(minus_x, ry - 24.0f, 48.0f, 48.0f);
+                
+                // [+] Button
                 CP_Settings_Fill(hovPlus ? CP_Color_Create(215, 140, 40, 160) : CP_Color_Create(40, 40, 40, 40));
-                CP_Graphics_DrawRect(742.0f, ry - 24.0f, 48.0f, 48.0f);
+                CP_Graphics_DrawRect(plus_x, ry - 24.0f, 48.0f, 48.0f);
+
+                // Text labels
                 CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
-                CP_Font_DrawText("-", 630.0f, ry);
-                CP_Font_DrawText("+", 766.0f, ry);
+                CP_Font_DrawText("-", minus_x + 24.0f, ry);
+                CP_Font_DrawText("+", plus_x + 24.0f, ry);
+                
                 char vbuf[16];
                 sprintf(vbuf, "%d%%", (int)(vol * 100.0f + 0.5f));
-                CP_Font_DrawText(vbuf, 698.0f, ry);
-                CP_Font_DrawText(rows[i], 490.0f, ry);
+                CP_Font_DrawText(vbuf, val_x, ry);
+                CP_Font_DrawText(rows[i], label_x, ry);
             }
             else {
-                bool hover = mx >= 450.0f && mx <= 830.0f && my >= ry - 28.0f && my <= ry + 28.0f;
+                // BACK button: uses the centered rect_x (610.0f) and rect_w (380.0f)
+                bool hover = is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f);
+                
                 if (hover) {
                     CP_Settings_RectMode(CP_POSITION_CORNER);
                     CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-                    CP_Graphics_DrawRect(450.0f, ry - 28.0f, 380.0f, 56.0f);
+                    CP_Graphics_DrawRect(rect_x, ry - 28.0f, rect_w, 56.0f);
                 }
                 CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
                 CP_Font_DrawText(rows[i], SCREEN_WIDTH * 0.5f, ry);
@@ -1306,77 +1322,82 @@ static void draw_pause_menu(void) {
 
     // Bottom panel: MENU | QUIT (PixelAdventure has Menu + Desktop)
     draw_cream_panel(SCREEN_WIDTH * 0.5f, 600.0f, 440.0f, 100.0f);
-    bool hovMenu = mx >= 430.0f && mx <= 630.0f && my >= 572.0f && my <= 628.0f;
-    bool hovQuit = mx >= 650.0f && mx <= 850.0f && my >= 572.0f && my <= 628.0f;
     CP_Settings_RectMode(CP_POSITION_CORNER);
-    if (hovMenu) {
+
+    // If mouse hovers over MENU button, draw orange rect
+    if (is_mouse_over(580.0f, 572.0f, 200.0f, 56.0f)) {
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(430.0f, 572.0f, 200.0f, 56.0f);
+        // Format: x-axis, y-axis, width, height
+        CP_Graphics_DrawRect(600.0f, 572.0f, 200.0f, 56.0f);
     }
-    if (hovQuit) {
+
+    // If mouse hovers over QUIT button, draw orange rect
+    if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(650.0f, 572.0f, 200.0f, 56.0f);
+        CP_Graphics_DrawRect(800.0f, 572.0f, 200.0f, 56.0f);
     }
-    CP_Settings_Fill(hovMenu ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("MENU", 530.0f, 600.0f);
-    CP_Settings_Fill(hovQuit ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("QUIT", 750.0f, 600.0f);
+    // Menu Text dark gray or orange if mouse hover over it
+    CP_Settings_Fill(is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("MENU", 700.0f, 600.0f);
+    // Quit button dark gray or orange if mouse hovers over it.
+    CP_Settings_Fill(is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("QUIT", 900.0f, 600.0f);
 }
 
 static void handle_pause_input(void) {
-    float mx = CP_Input_GetMouseX();
-    float my = CP_Input_GetMouseY();
     bool clicked = CP_Input_MouseClicked();
     if (pausePage == 0) {
         if (!clicked) return;
+        // RESUME, RESTART, OPTION click button area:
         for (int i = 0; i < 3; i++) {
             float ry = pause_row_y(i);
-            if (mx >= 450.0f && mx <= 830.0f && my >= ry - 28.0f && my <= ry + 28.0f) {
-                if (i == 0) paused = false;                    // RESUME
+            if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) {
+                if (i == 0) paused = false;  // RESUME
                 else if (i == 1) { restart_from_beginning(); paused = false; }  // RESTART: from beginning
                 else { pausePage = 1; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // OPTIONS
                 play_click();
                 return;
             }
         }
-        if (mx >= 430.0f && mx <= 630.0f && my >= 572.0f && my <= 628.0f) {
+        // MENU click button area:
+        if (is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f)) {
             CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // MENU: back to title
             paused = false;
             if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
             play_click();
-        }
-        else if (mx >= 650.0f && mx <= 850.0f && my >= 572.0f && my <= 628.0f) {
+        } // QUIT click button area:
+        else if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
             CP_Engine_Terminate();      // QUIT: close the game
         }
     }
-    else {
+    else { // If user click "option" button area, then there's audio, back and menu button click area.
         if (!clicked) return;
         for (int i = 0; i < 2; i++) {
             float ry = pause_row_y(i);
             float* vol = (i == 0) ? &musicVol : &sfxVol;
-            if (mx >= 606.0f && mx <= 654.0f && my >= ry - 24.0f && my <= ry + 24.0f) {
+            if (is_mouse_over(787.0f, ry - 24.0f, 48.0f, 48.0f)) {
                 *vol -= 0.1f; if (*vol < 0.0f) *vol = 0.0f;
                 apply_volumes();
                 play_click();
                 return;
             }
-            if (mx >= 742.0f && mx <= 790.0f && my >= ry - 24.0f && my <= ry + 24.0f) {
+            if (is_mouse_over(922.0f, ry - 24.0f, 48.0f, 48.0f)) {
                 *vol += 0.1f; if (*vol > 1.0f) *vol = 1.0f;
                 apply_volumes();
                 if (i == 1 && stepSnd) CP_Sound_Play(stepSnd);
                 else play_click();
                 return;
             }
-        }
+        } 
         float ry = pause_row_y(2);
-        if (mx >= 450.0f && mx <= 830.0f && my >= ry - 28.0f && my <= ry + 28.0f) { pausePage = 0; play_click(); }  // BACK
-        if (mx >= 430.0f && mx <= 630.0f && my >= 572.0f && my <= 628.0f) {
-            CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // MENU: back to title
+        if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) { pausePage = 0; play_click(); }  // BACK click button area
+        if (is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f)) { // MENU click button area
+            CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit); 
             paused = false;
             if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
             play_click();
-        }
-        else if (mx >= 650.0f && mx <= 850.0f && my >= 572.0f && my <= 628.0f) {
+        } // QUIT click button area:
+        else if (is_mouse_over(650.0f, 572.0f, 200.0f, 56.0f)) {
             CP_Engine_Terminate();
         }
     }
@@ -1609,10 +1630,10 @@ void game_update(void) {
             CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
             CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
             CP_Settings_TextSize(58.0f);
-            CP_Font_DrawText("LEVEL COMPLETE", SCREEN_WIDTH * 0.5f, 310.0f);
+            CP_Font_DrawText("LEVEL COMPLETE", SCREEN_WIDTH * 0.5f, 400.0f);
             CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
             CP_Settings_TextSize(30.0f);
-            CP_Font_DrawText("Click anywhere to return to menu", SCREEN_WIDTH * 0.5f, 400.0f);
+            CP_Font_DrawText("Click anywhere to return to menu", SCREEN_WIDTH * 0.5f, 500.0f);
             if (CP_Input_MouseClicked()) {
                 CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // back to title
                 paused = false;
