@@ -38,7 +38,7 @@ void menu_init(void) {
     if (!volBtnImage) volBtnImage = CP_Image_Load("Assets/Menu/Buttons/Volume.png");
     if (!settingsBtnImage) settingsBtnImage = CP_Image_Load("Assets/Menu/Buttons/Settings.png");
     if (!clickSnd) clickSnd = CP_Sound_Load("Assets/Sound/button_click.wav");
-    if (!windowOpenSnd) windowOpenSnd = CP_Sound_Load("Assets/Sound/window_open.ogg");
+    if (!windowOpenSnd) windowOpenSnd = CP_Sound_Load("Assets/Sound/window_open.wav");
     if (!menuMusic) menuMusic = CP_Sound_LoadMusic("Assets/Sound/menu_music.wav");
     apply_volumes(); // defined in utils.c
 

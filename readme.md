@@ -1,10 +1,38 @@
 ## TO-DO:
-- Bugs to fix: Checkpoint flag appearing outside of map.
-- Add full screen mode option.
-- Add Wall-jump to character feature with asset "Wall Jump (32x32)". 
-    - Expand level design with wall jump to reach the top platform.
-    - Change finish line from bottom to top of the wall.
+- Add digipen and buildlab logo splash screen (2 seconds interval). Then followed by "All content © 2026 DigiPen Institute of Technology Singapore. All Rights Reserved".
+- Add "Are you sure" box confirmation for during game-pause menu for "restart", "quit", "main menu" buttons
+- add text "Controls" under "settings" icon 
+- Add text "quit" under quit icon 
+- Create "Credits" button (credit.c) that has this info:
+    - Team Members: List all students currently or previously on the team under "Team Members". Students who have not been on the team for an entire semester can be listed under “Special Thanks” if you wish, but must otherwise be listed as regular team members. 
+    - Instructors: Your class instructors (this module).
+    - President: Claude Comair 
+    - Executives: CHU Jason Yeu Tat, Michael GATS, TAN Chek Ming, Prasanna Kumar GHALI, Mandy WONG, Johnny DEEK
+    - Product must display the official DigiPen Singapore logo and copyright top or beginning of the credits. Do not put this at the end of a scrolling credits sequence. The copyright must be the following text: "All content © 20XX DigiPen Institute of Technology Singapore. All Rights Reserved". Replace the “XX” with the current year.
 
+- Check for any warning. Must have less than 5 warnings.
+- Check for any memory leak:
+```To check for memory leak in Visual Studio, add the following include to your main.c/cpp file:
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
+and this line at the top of your entry point function: 
+_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
+```
+#### Code To-Do:
+- Transfer all "collision" code (in game.c) into a function block that resides in "utils.c" file.
+
+
+---
+
+Copyright info:
+- buildlab logo created by us.
+- Sounds (step.wav, jump.wav, respawn.wav, player_hit.wav, hit.wav, death.wav, coin.wav, button_click.wav) created from https://www.bfxr.net/
+- Background music: https://freesound.org/people/szegvari/sounds/595750/, menu music: https://freesound.org/people/Sunsai/sounds/415805/
+- Game visual asserts (player, map level, enemies, trap design) from https://kenney.nl/assets
+- External libraries used: cJSON.c file
+- External graphic tool used: Tiled editor
 
 ## Current features of the game:
 - `Project1` folder contains game dev project.
