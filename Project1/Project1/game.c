@@ -3,11 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "cJSON.c"
 #include "cprocessing.h"
 #include "utils.h"  // shared canvas, assets, UI helpers (screen vars, font, sounds, cream panel)
 #include "menu.h"   // menu_init/menu_update/menu_exit (pause MENU + level-complete return here)
-#include "game.h"   // own state entry points
+#include "game.h"   // own state entry points + shared render state (mapImage, camX/camY...)
+#include "extract.h" // map extraction: entity types/pool, load_map_json, render_map_json
+#include "pause.h"   // pause menu state (paused/pausePage) + draw/handle entry points
 
 // Gameplay HUD button (menu buttons moved to menu.c;
 // shared canvas/assets/helpers moved to utils.c)
@@ -15,35 +16,28 @@ static CP_Image restartBtnImage = NULL;  // gameplay HUD, top-right
 
 // Corner buttons use a fixed 1600x900 top-right layout (48px, no scaling).
 
-// Pause menu (PixelAdventure style: dim + banner + button panels, world frozen)
-static bool paused = false;
-static int pausePage = 0;  // 0 = main (Resume/Restart/Settings), 1 = audio options
+// Pause state (paused/pausePage) now owned by pause.c (externs in pause.h) —
+// the game loop below reads/writes the flags, pause.c draws/handles the menu.
 
-// Terrain Tilesheet Handle & Dimensions (fallback if map.png is missing)
-static CP_Image terrainSheet = NULL;
-static float sheetW = 384.0f; // Width of Terrain (16x16).png
+// Terrain Tilesheet Handle & Dimensions (fallback if map.png is missing;
+// shared with render_map_json in extract.c via game.h)
+CP_Image terrainSheet = NULL;
+float sheetW = 384.0f; // Width of Terrain (16x16).png
 static float sheetH = 192.0f; // Height of Terrain (16x16).png
 
 // Pre-rendered map (Tiled -> Export as Image at 1x = 3200x1600).
 // Drawn as one camera sub-rect per frame; map.json tile data stays for collision only.
-static CP_Image mapImage = NULL;
+// (Shared with render_map_json in extract.c via game.h; freed in game_exit.)
+CP_Image mapImage = NULL;
 
-// Tilemap Camera (world-pixel position of the viewport's top-left corner)
-static float camX = 0.0f;
-static float camY = 0.0f;
+// Tilemap Camera (world-pixel position of the viewport's top-left corner;
+// shared with render_map_json in extract.c via game.h)
+float camX = 0.0f;
+float camY = 0.0f;
 static const float CAM_SPEED = 500.0f; // world px per second
 
-// Map JSON Storage
-static int mapWidth = 0;
-static int mapHeight = 0;
-static int tileWidth = 16;
-static int tileHeight = 16;
-static int* mapData = NULL;
-
-// GIDs that look solid but are background fill (transparent to physics)
-static bool tile_is_bg_fill(int gid) {
-    return gid == 24 || gid == 112;
-}
+// Map tile px now owned by extract.c (tileWidth/tileHeight externs in extract.h;
+// load_map_json sets them, render_map_json reads them).
 
 // -----------------------------------------------------------------------------
 // Player (Virtual Guy), particles, audio
@@ -87,7 +81,7 @@ static CP_Image shadowImg = NULL;
 static CP_Image dustImg = NULL;
 
 static CP_Sound worldMusic = NULL;
-static CP_Sound stepSnd = NULL;
+CP_Sound stepSnd = NULL;  // shared with pause.c SFX preview (extern in game.h)
 static CP_Sound jumpSnd = NULL;
 static CP_Sound respawnSnd = NULL;    // every player spawn
 
@@ -104,85 +98,8 @@ typedef struct {
 } Dust;
 static Dust dustPool[MAX_DUST];
 
-// -----------------------------------------------------------------------------
-// Map object extraction: checkpoints, enemies, traps (map.json objectgroups)
-// -----------------------------------------------------------------------------
-#define MAX_ENTITIES 72
-typedef enum {
-    ENT_SAW, ENT_SPIKES, // 0-1
-    ENT_PLANT, ENT_CHICKEN, ENT_BAT, ENT_RINO, // 2-5
-    ENT_START, ENT_CHECKPOINT, ENT_END, // 6-8
-    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY, // 9-13
-    ENT_COUNT // 14
-} EntityKind;
-
-typedef struct {
-    const char* path;
-    const char* altPath;   // flattened / activated variant sheet (checkpoint flag)
-    const char* idlePath;  // optional Idle strip; NULL = reuse path (Chicken/Bat/Rino)
-    const char* runPath;   // optional Run (or Fly) strip; NULL = reuse path
-    const char* hitPath;   // optional one-shot Hit strip; NULL = instant remove on stomp
-    int cellW, cellH;      // frame cell size on the sheet (source px)
-    float hbW, hbH;        // hitbox as a fraction of the scaled cell
-    bool hazard;           // non-living damager (saw, spikes)
-    bool flies;            // bat: no gravity, hovers
-    float speed;           // patrol speed (world px/s); 0 = stationary
-    float animFps;         // animation playback speed
-} EntityDef;
-
-static const EntityDef ENTITY_DEFS[ENT_COUNT] = {
-    { "Assets/Traps/Saw/On (38x38).png",        NULL, NULL, NULL, NULL, 38, 38, 0.55f, 0.55f, true,  false,   0.0f, 12.0f },
-    { "Assets/Traps/Spikes/Idle.png",           NULL, NULL, NULL, NULL, 16, 16, 0.70f, 0.45f, true,  false,   0.0f,  1.0f },
-    { "Assets/Enemies/Plant/Idle (44x42).png",  NULL, NULL, NULL, "Assets/Enemies/Plant/Hit (44x42).png",
-                                                                            44, 42, 0.60f, 0.60f, false, false,   0.0f,  8.0f },
-    { "Assets/Enemies/Chicken/Run (32x34).png", NULL, NULL, NULL, "Assets/Enemies/Chicken/Hit (32x34).png",
-                                                                            32, 34, 0.68f, 0.68f, false, false, 110.0f, 10.0f },
-    { "Assets/Enemies/Bat/Flying (46x30).png",  NULL, "Assets/Enemies/Bat/Idle (46x30).png",
-                                                      "Assets/Enemies/Bat/Flying (46x30).png",
-                                                      "Assets/Enemies/Bat/Hit (46x30).png",
-                                                                            46, 30, 0.60f, 0.60f, false, true,   30.0f,  8.0f },
-    { "Assets/Enemies/Rino/Run (52x34).png",    NULL, NULL, NULL, "Assets/Enemies/Rino/Hit (52x34).png",
-                                                                            52, 34, 0.68f, 0.68f, false, false, 130.0f,  8.0f },
-    { "Assets/Items/Checkpoints/Start/Start (Idle).png", NULL, NULL, NULL, NULL,
-                                                                            64, 64, 0.55f, 0.55f, false, false,   0.0f,  1.0f },
-    { "Assets/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
-      "Assets/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png",
-      NULL, NULL, NULL,
-      64, 64, 0.55f, 0.55f, false, false, 0.0f, 1.0f },
-    { "Assets/Items/Checkpoints/End/End (Idle).png", NULL, NULL, NULL, NULL,
-                                                                            64, 64, 0.55f, 0.55f, false, false,   0.0f,  1.0f },
-    { "Assets/Items/Fruits/Orange.png",     NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Cherries.png",   NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Kiwi.png",       NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Melon.png",      NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Strawberry.png", NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-};
-
-typedef struct {
-    EntityKind kind;
-    bool active;
-    CP_Image baseImage, altImage;
-    CP_Image idleImg, runImg, hitImg; // per-state strips (NULL = reuse baseImage)
-    CP_Image emergeImg;              // bat only: Ceiling In alert strip on detection
-    int animState;   // 0 = idle/perched, 1 = run/fly, 2 = hit flash, 3 = bat emerging
-    float stateT;    // time in current animState
-    float deathT;    // >0 = stomped, Hit strip playing, counts down to deactivate
-    int totalFrames, cellW, cellH;
-    float x, y;            // world px, CENTER of the entity
-    float sx, sy;          // spawn point (restored on reset)
-    float w, h;            // world-px hitbox, centered on (x, y)
-    float vx, vy;
-    int facing;
-    float animT;
-    float atkT, coolT;     // plant shooter: attack clock + cooldown
-    bool attacking, fired; // attack anim running / bullet released this cycle
-    bool grounded;
-    bool activated;        // checkpoint reached -> flag out
-} Entity;
-
-static Entity entityPool[MAX_ENTITIES]; // array of 72 slots (defined in line 158)
-static int entityCount = 0;        // How many used so far (start at 0).
-static float entityScale = 3.0f;   // world px per Tiled px == TILE_SIZE / tileWidth
+// Entity types, ENTITY_DEFS table, entity pool + entityScale now owned by
+// extract.c (externs in extract.h) — extraction fills them, gameplay reads them.
 
 static bool levelComplete = false;
 static float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px (checkpoint; cleared on fresh start)
@@ -229,21 +146,6 @@ static void spawn_pickup_fx(float wx, float wy) {
 // Helper Functions ("Methods")
 // -----------------------------------------------------------------------------
 
-// True if the tile CELL is solid (bounds-aware). gid 0 and navy fill pass through.
-static bool is_solid_cell(int tx, int ty) {
-    if (tx < 0 || tx >= mapWidth || ty >= mapHeight) return true;  // walls + floor
-    if (ty < 0 || !mapData) return false;                          // open sky
-    int gid = mapData[ty * mapWidth + tx];
-    if (gid <= 0 || tile_is_bg_fill(gid)) return false;
-    return true;
-}
-
-static bool is_solid_px(float wx, float wy) {
-    int tx = (int)floorf(wx / TILE_SIZE);  // floorf: negatives map to -1, not 0
-    int ty = (int)floorf(wy / TILE_SIZE);
-    return is_solid_cell(tx, ty);
-}
-
 // Leftmost lowest open pocket with headroom + floor: adapts to map edits
 static void find_spawn_cell(int* outTx, int* outTy) {
     if (!mapData || mapWidth <= 0 || mapHeight <= 0) { *outTx = 0; *outTy = 0; return; }
@@ -264,7 +166,7 @@ static void find_spawn_cell(int* outTx, int* outTy) {
 // fell-out-of-world rescues. RESTART buttons and menu PLAY use this instead,
 // so flags, fruits, enemies AND spawn all start over.)
 static void reset_run(void);  // defined just below; fwd so the helper can call it
-static void restart_from_beginning(void) {
+void restart_from_beginning(void) {
     respawnX = -1.0f; respawnY = -1.0f;
     reset_run();
 }
@@ -408,153 +310,6 @@ static void draw_sheet_frame(CP_Image img, int cellW, int cellH, int frame, floa
     float u1 = u0 + (float)cellW;
     if (facing < 0) { float t = u0; u0 = u1; u1 = t; }
     CP_Image_DrawSubImage(img, sx, sy, dw, dh, u0, 0.0f, u1, (float)cellH, alpha);
-}
-
-// Map the Tiled object layer name to an EntityKind (mirrors fruits "extract orange")
-static EntityKind kind_from_layer_name(const char* name) {
-    if (!name) return ENT_COUNT;
-    if (strstr(name, "Saw"))         return ENT_SAW;
-    if (strstr(name, "Spikes"))      return ENT_SPIKES;
-    if (strstr(name, "Plant"))       return ENT_PLANT;
-    if (strstr(name, "Chicken"))     return ENT_CHICKEN;
-    if (strstr(name, "Bat"))         return ENT_BAT;
-    if (strstr(name, "Rino"))        return ENT_RINO;
-    if (strstr(name, "Start"))       return ENT_START;
-    if (strstr(name, "Checkpoint"))  return ENT_CHECKPOINT;
-    if (strstr(name, "End"))         return ENT_END;
-    if (strstr(name, "Orange"))     return ENT_FRUIT_ORANGE;
-    if (strstr(name, "Cherries"))   return ENT_FRUIT_CHERRIES;
-    if (strstr(name, "Kiwi"))       return ENT_FRUIT_KIWI;
-    if (strstr(name, "Melon"))      return ENT_FRUIT_MELON;
-    if (strstr(name, "Strawberry")) return ENT_FRUIT_STRAWBERRY;
-    return ENT_COUNT;
-}
-
-// Instantiate one map-placed object at world coords (map px * entityScale).
-// Returns the pool slot, or NULL when full / kind invalid (so the caller can
-// tweak per-object settings like Tiled facing).
-static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
-    // return nothing if entityCount more than 72 (max pool size) or kind invalid.
-    // entityCount is set to 0 initially (line 217)
-    if (entityCount >= MAX_ENTITIES || kind >= ENT_COUNT) return NULL;
-
-    // Look up kind's template (sprite path, cell size, hitbox, speed) from ENTITY_DEFS table
-    // e.g. { "Assets/Items/Fruits/Kiwi.png",  NULL, 32, 32, 0.65f, 0.65f, false, true,  false,   0.0f, 12.0f },
-    // if kind = ENT_FRUIT_KIWI, then &ENTITY_DEFS[ENT_FRUIT_KIWI] will read above comment.
-    const EntityDef* def = &ENTITY_DEFS[kind];
-
-    // point to empty index slot to store kind, alive or not, sprites, pos + respawn + hover baseline, hit box, movement, timers/flags 
-    // e.g.  entityCount==0 → e = &entityPool[0], so slot 1 out of 72 is being used. Then entityCount +1 to move next empty slot.
-    Entity* e = &entityPool[entityCount++];
-
-    e->kind = kind; // current type (fruits, trap or animals)
-    e->active = true; // true = alive (so update/draw/collision can process it)
-    e->baseImage = def->path ? CP_Image_Load(def->path) : NULL; // load image's kind sprites (544 x 32 pixels (Kiwi) or 38x38 pixels (Saw))
-    e->altImage = def->altPath ? CP_Image_Load(def->altPath) : NULL; // altImage only used by Checkpoint (NoFlag -> Flag)
-    // Per-state strips (Chicken/Bat/Rino Idle-Run/Fly-Hit, Plant Hit); NULL = reuse baseImage
-    e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL;
-    e->runImg = def->runPath ? CP_Image_Load(def->runPath) : NULL;
-    e->hitImg = def->hitPath ? CP_Image_Load(def->hitPath) : NULL;
-    // Bat-only strip (Ceiling In = alert burst on detection); NULL for the rest.
-    // (Ceiling Out.png is unused for now — say where you want it, e.g. return-home tuck.)
-    if (kind == ENT_BAT) {
-        e->emergeImg = CP_Image_Load("Assets/Enemies/Bat/Ceiling In (46x30).png");
-    } else {
-        e->emergeImg = NULL;
-    }
-    e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;  // start in run/fly state
-    e->cellW = def->cellW; // weight of image (e.g. 32)
-    e->cellH = def->cellH; // height of image (e.g. 32)
-    e->totalFrames = 1;    // updates each frame by 1
-
-    // All fruits images contains sprite. (e.g. Kiwi image contains 544 x 32 pixels)
-    // Image sprite is a single image file that combines multiple smaller images.
-    // We need to extract small images from image sprite.
-    if (e->baseImage) { 
-        int iw = CP_Image_GetWidth(e->baseImage); // 544 pixels
-        if (iw > def->cellW) e->totalFrames = iw / def->cellW;
-    }
-
-    // Current pos = world px passed in (already x*3.0)
-    e->x = wx; e->y = wy;
-    e->sx = wx; e->sy = wy;
-
-    // Hitbox size = sprite cell * 3.0 scale * fraction, e.g. Kiwi 32*3*0.65
-    // The reason why add fraction is because PNG has transparent padding around it, 
-    // so hitbox may trigger even when character did not "visually touch" trap or enemies.
-    e->w = (float)def->cellW * entityScale * def->hbW;
-    e->h = (float)def->cellH * entityScale * def->hbH;
-
-    // Ground markers are authored as points ON the ground surface in Tiled:
-    // lift the center so the sprite's feet rest at the point. Without this the
-    // middle of the sprite sits at the point and half the checkpoint pole /
-    // spike sinks under the tiles (see spike&cp.png).
-    if (kind == ENT_START || kind == ENT_CHECKPOINT || kind == ENT_END || kind == ENT_SPIKES) {
-        e->y -= (float)def->cellH * entityScale * 0.5f;  // seat feet at the point
-        e->sy = e->y;
-    }
-
-    // Animals are plotted ~1 tile above the ground in Tiled: drop them so their
-    // feet rest exactly on top of the first solid tile (no floating, no half-buried).
-    // Needs mapData, so the Map tilelayer must come before Enemies in map.json layers.
-    if (mapData && (kind == ENT_CHICKEN || kind == ENT_RINO || kind == ENT_PLANT)) {
-        float halfH2 = e->h * 0.5f;
-        float bottom = e->y + halfH2;
-        if (is_solid_px(e->x, bottom)) {
-            // Half-way inside a tile: pop straight up onto its top
-            e->y = ((int)(bottom / TILE_SIZE)) * TILE_SIZE - halfH2 - 0.01f;
-        } else {
-            // Floating: scan down (max 3 tiles) and sit on the first solid top
-            for (float d = 4.0f; d <= TILE_SIZE * 3.0f; d += 4.0f) {
-                if (is_solid_px(e->x, bottom + d)) {
-                    e->y = ((int)((bottom + d) / TILE_SIZE)) * TILE_SIZE - halfH2 - 0.01f;
-                    break;
-                }
-            }
-        }
-        e->sy = e->y;
-        e->vy = 0.0f;
-        e->grounded = true;
-    }
-
-    // Bat sleeper: tuck into the nearest ceiling (solid tile bottom) above the
-    // plotted point, so it hangs off real tiles instead of open air by the
-    // window edge. Perch is stored into sx/sy, so reset_run and the RETURN leg
-    // both aim at the same ceiling. Needs mapData (Map layer before Enemies).
-    if (kind == ENT_BAT && mapData) {
-        float surface = 0.0f;  // world-y of the ceiling's bottom edge
-        for (float d = 0.0f; d <= TILE_SIZE * 10.0f; d += 4.0f) {
-            float py = wy - d;
-            if (is_solid_px(wx, py)) { surface = ((int)(py / TILE_SIZE) + 1) * TILE_SIZE; break; }
-        }
-        if (surface > 0.0f) {
-            e->x = wx; e->y = surface + e->h * 0.45f;  // body tucked just under the ceiling
-        } else {
-            e->x = wx; e->y = wy;  // open sky above: hover where plotted (old behavior)
-        }
-        e->sx = e->x; e->sy = e->y;
-        e->animState = 0;  // start perched on the ceiling (Idle art)
-    }
-
-    // Patrol velocity: 
-    // 1st ?: if speed>0 (Chicken 90, Rino 130), go to 2nd `?`. Else vx = 0.
-    // 2nd ?: alternate -speed/+speed by even/odd count.
-    // (Chicken/Rino facing can still be overridden per-object by Tiled object name
-    // in parse_object_group_entities, and reset_run preserves it.)
-    e->vx = (def->speed > 0.0f) ? (((entityCount & 1) == 0) ? -def->speed : def->speed) : 0.0f;
-
-    // Start with zero velocity speed
-    e->vy = 0.0f;
-
-    // Face movement direction (1=right, -1=left for sprite mirror)
-    e->facing = e->vx >= 0.0f ? 1 : -1;
-
-    // Reset anim/hover timers and state flags
-    // (seated animals above already start grounded = true)
-    e->animT = 0.0f;
-    if (kind != ENT_CHICKEN && kind != ENT_RINO && kind != ENT_PLANT) e->grounded = false;
-    e->activated = false;
-    return e;
 }
 
 
@@ -954,211 +709,9 @@ static void render_entities(void) {
     }
 }
 
-// Extract objects of one objectgroup leaf (e.g. "Kiwi") into entity pool
-static void parse_object_group_entities(cJSON* layer) {
-    // Get "name" field from this layer dict, e.g. {"name":"Kiwi","type":"objectgroup","objects":[...]}
-    // where "objects":[...] contains [{"x":1310,"y":867},{"x":1717,"y":889}...]
-    cJSON* nameItem = cJSON_GetObjectItemCaseSensitive(layer, "name"); // nameItem = "Kiwi"
-
-    // Safely extract C-string; if missing/non-string use "" to avoid NULL crash
-    // e.g. return "" if nameItem = "".
-    const char* name = (cJSON_IsString(nameItem) && nameItem->valuestring) ? nameItem->valuestring : "";
-
-    // Map leaf name -> EntityKind via kind_from_layer_name()
-    // e.g. "Kiwi"->ENT_FRUIT_KIWI, "Saw"->ENT_SAW,
-    EntityKind kind = kind_from_layer_name(name);
-    if (kind >= ENT_COUNT) return;   // unknown name returns ENT_COUNT -> skip (nothing to spawn)
-
-    // Get "objects position" array from this leaf
-    // e.g. Multiple Kiwi fruits have positions of [{"x":1310,"y":867},{"x":1717,"y":889}...]
-    cJSON* objects = cJSON_GetObjectItemCaseSensitive(layer, "objects");
-    if (!cJSON_IsArray(objects)) return;
-
-    // Count how many kiwi fruits placed in tiled eidtor.
-    // e.g. [{"x":1310,"y":867},{"x":1717,"y":889}] = 2 kiwi fruits.
-    int n = cJSON_GetArraySize(objects);
-
-    // For each Kiwi, get it's X & Y coordinates
-    for (int i = 0; i < n; i++) {
-        // Get i-th point dict, e.g. {"x":1310,"y":867,"point":true}
-        cJSON* obj = cJSON_GetArrayItem(objects, i);
-        if (!obj) continue;
-
-        // Get object coordinates (Kiwi position at "x":1310,"y":867).
-        cJSON* x = cJSON_GetObjectItemCaseSensitive(obj, "x");
-        cJSON* y = cJSON_GetObjectItemCaseSensitive(obj, "y");
-
-        // spawn one entity at world pos = Tiled px * 3.0 to match 16px->48px map; (or else fruits would spawn off scaled map)
-        // size is scaled inside spawn_entity()
-        if (cJSON_IsNumber(x) && cJSON_IsNumber(y)) {
-            // Format: spawn_entity(kind, x position, y position);
-            Entity* se = spawn_entity(kind, (float)x->valuedouble * entityScale, (float)y->valuedouble * entityScale);
-            // Initial facing for Chicken/Rino comes from the OBJECT name in Tiled
-            // (layer name "Chicken" picks the kind; point name picks facing):
-            // select the point -> Properties -> Name -> "left" or "right".
-            // Blank name = alternating default. This answers "which chicken faces where".
-            if (se && (kind == ENT_CHICKEN || kind == ENT_RINO)) {
-                cJSON* oname = cJSON_GetObjectItemCaseSensitive(obj, "name");
-                const char* on = (cJSON_IsString(oname) && oname->valuestring) ? oname->valuestring : "";
-                if (strstr(on, "left")) se->facing = -1;
-                else if (strstr(on, "right")) se->facing = 1;
-                se->vx = 0.0f;  // update loop drives vx from facing from now on
-            }
-        }
-    }
-}
-
-// Get map tile layer (Grid map structure built by `tileSheet` + obj location points groups)
-static void process_layers_world(cJSON* layers) {
-    if (!cJSON_IsArray(layers)) return;
-
-    // Find number of layers (n) (1 layer = map Structure, 2nd layer = fruit objects location)
-    int n = cJSON_GetArraySize(layers);
-    for (int l = 0; l < n; l++) {
-        // (1st loop) layers[0] -> 1st item. (2nd loop) layers[1] -> 2nd item.
-        cJSON* layer = cJSON_GetArrayItem(layers, l);
-        if (!layer) continue;
-
-        // "type": "tilelayer" (refers to main map design) or "type": "objectgroup" (refers to object props in map)
-        cJSON* type = cJSON_GetObjectItemCaseSensitive(layer, "type");
-
-        // skip loop if type (layer) does not exist or type contains no string 
-        if (!cJSON_IsString(type) || !type->valuestring) continue;
-        
-        // Get map structure:
-        // string == "tilelayer" (map design level)
-        // strcmp(A, B) == 0 means True.
-        if (strcmp(type->valuestring, "tilelayer") == 0) {
-            cJSON* data = cJSON_GetObjectItemCaseSensitive(layer, "data");
-            if (cJSON_IsArray(data)) {
-                int dataSize = cJSON_GetArraySize(data); // No. of GIDs
-                if (mapData) free(mapData);
-                mapData = (int*)malloc(sizeof(int) * dataSize); // buffer
-                if (mapData == NULL) {
-                    // if Memory allocation failed, return nothing.
-                    return;
-                }
-
-                // Copy each GID into `mapData` buffer
-                for (int i = 0; i < dataSize; i++) {
-                    // Get GIDs tile number.
-                    cJSON* tile = cJSON_GetArrayItem(data, i);
-                    // Convert from JSON format to C lanuage format.
-                    if (cJSON_IsNumber(tile)) mapData[i] = tile->valueint;
-                }
-            }
-        }
-        // objectgroup (contains fruits (kiwi, melon etc), enemies (plant, chicken etc), checkpoints (start, end)), trap (saw, spikes)
-        else if (strcmp(type->valuestring, "objectgroup") == 0) {
-            parse_object_group_entities(layer);
-        }
-        // group contain Folders of Fruit, Enemies, Trap, Checkpoint.
-        else if (strcmp(type->valuestring, "group") == 0) {
-            cJSON* sub = cJSON_GetObjectItemCaseSensitive(layer, "layers");
-            if (cJSON_IsArray(sub)) process_layers_world(sub);
-        }
-    }
-}
-
-// Loads and parses map.json exported from Tiled using cJSON
-static void load_map_json(const char* filepath) {
-    FILE* file = fopen(filepath, "rb"); //default path is at OutDir/Assets/Terrain/map.json
-
-    // Create a buffer (that can hold entire map.json size):
-    fseek(file, 0, SEEK_END); // moves file current position to file's end (to get total size of file)
-    long length = ftell(file); // ftell =  gives the current position in bytes
-    fseek(file, 0, SEEK_SET); // moves file end position back to start position.
-    char* buffer = (char*)malloc((size_t)length + 1); // +1 to put null terminator `\0'` at the end of buffer.
-
-    // Copies map.json file content into buffer
-    // buffer now contains raw JSON text structure
-    // buffer = // [ JSON ][ JSON ] ... [ JSON ][ ? ] (last byte is empty)
-    fread(buffer, 1, length, file);
-    buffer[length] = '\0'; // place `\0'` at the end of buffer. This indicates end of the C string.
-    fclose(file);
-
-    // cJSON take & understand this raw JSON text structure so that you can obtain dimensions (width, height) etc.
-    cJSON* json = cJSON_Parse(buffer);
-    free(buffer);
-    if (!json) return;
-
-    // Get map dimensions
-    cJSON* width = cJSON_GetObjectItemCaseSensitive(json, "width"); //"width": 200 
-    cJSON* height = cJSON_GetObjectItemCaseSensitive(json, "height"); //"height": 100
-    cJSON* tilew = cJSON_GetObjectItemCaseSensitive(json, "tilewidth"); //"tilewidth": 16
-    cJSON* tileh = cJSON_GetObjectItemCaseSensitive(json, "tileheight"); //"tileheight": 16
-
-    // Sometimes after getting dimensions (width etc) does not guarantee a number.
-    // Thus, we do `(cJSON_IsNumber(width))` to check if it is a number.
-    // We convert JSON format `"width": 200` to C format `mapWidth = 200`
-    if (cJSON_IsNumber(width)) mapWidth = width->valueint;
-    if (cJSON_IsNumber(height)) mapHeight = height->valueint;
-    if (cJSON_IsNumber(tilew)) tileWidth = tilew->valueint;
-    if (cJSON_IsNumber(tileh)) tileHeight = tileh->valueint;
-
-    cJSON* layers = cJSON_GetObjectItemCaseSensitive(json, "layers");
-    if (cJSON_IsArray(layers)) {
-        process_layers_world(layers);   // tile layer + objectgroups (incl. nested groups)
-    }
-
-    cJSON_Delete(json);
-
-    {  // per-kind breakdown so map points can be verified in the console (CP_Engine_Run(1); to show below printf message)
-        int counts[ENT_COUNT] = { 0 };
-        for (int i = 0; i < entityCount; i++)
-            if (entityPool[i].kind < ENT_COUNT) counts[entityPool[i].kind]++;
-        printf("Entities: saw %d, spikes %d, plant %d, chicken %d, bat %d, rino %d, start %d, checkpoint %d, end %d, orange %d, cherries %d, kiwi %d, melon %d, strawberry %d\n",
-            counts[ENT_SAW], counts[ENT_SPIKES], counts[ENT_PLANT], counts[ENT_CHICKEN], counts[ENT_BAT], counts[ENT_RINO],
-            counts[ENT_START], counts[ENT_CHECKPOINT], counts[ENT_END], counts[ENT_FRUIT_ORANGE], counts[ENT_FRUIT_CHERRIES],
-            counts[ENT_FRUIT_KIWI], counts[ENT_FRUIT_MELON], counts[ENT_FRUIT_STRAWBERRY]);
-    }
-    printf("Map loaded: %dx%d, tile %dx%d, entities %d\n", mapWidth, mapHeight, tileWidth, tileHeight, entityCount);
-}
-
-// Renders the tilemap parsed from map.json using Terrain (16x16).png
-static void render_map_json(void) {
-    CP_Settings_ImageMode(CP_POSITION_CORNER);
-
-    // Pre-rendered map (like PixelAdventure's map.png): 1 draw of the camera's
-    // sub-rect. map.png is a 1x Tiled export (3200x1600), so map-px = world-px / entityScale.
-    // mapData/map.json is still loaded and used for collision only.
-    if (mapImage) {
-        float s = (entityScale > 0.0f) ? entityScale : 3.0f;
-        float sx0 = camX / s, sy0 = camY / s;
-        float sw = SCREEN_WIDTH / s, sh = SCREEN_HEIGHT / s;
-        CP_Image_DrawSubImage(mapImage, 0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT,
-                              sx0, sy0, sx0 + sw, sy0 + sh, 255);
-        return;
-    }
-
-    // Fallback: per-tile render from the tilesheet map.json (only if map.png missing)
-    if (!mapData || !terrainSheet) return;
-    int tilesPerRowInSheet = (int)(sheetW / tileWidth);
-    if (tilesPerRowInSheet < 1) tilesPerRowInSheet = 1;
-
-    for (int y = 0; y < mapHeight; y++) {
-        for (int x = 0; x < mapWidth; x++) {
-            int tileIndex = y * mapWidth + x;
-            int tileGid = mapData[tileIndex];
-
-            if (tileGid <= 0) continue;
-
-            float screenX = x * TILE_SIZE - camX;
-            float screenY = y * TILE_SIZE - camY;
-
-            if (screenX < -TILE_SIZE || screenX > SCREEN_WIDTH ||
-                screenY < -TILE_SIZE || screenY > SCREEN_HEIGHT) continue;
-
-            int tileId = tileGid - 1;
-            float cropX = (float)((tileId % tilesPerRowInSheet) * tileWidth);
-            float cropY = (float)((tileId / tilesPerRowInSheet) * tileHeight);
-
-            CP_Image_DrawSubImage(terrainSheet, screenX, screenY, TILE_SIZE, TILE_SIZE, cropX, cropY, cropX + (float)tileWidth, cropY + (float)tileHeight, 255);
-        }
-    }
-}
-
-// (Title-screen UI moved to menu.c: draw_menu_ui, quit popup, menu input.)
+ 
+//  extract.c (map render lives with map data)
+// load_map_json, render_map_json, process_layers_world, parse_object_group_entities
 
 // -----------------------------------------------------------------------------
 // Lifecycle Functions
@@ -1229,179 +782,8 @@ void game_init(void) {
     restart_from_beginning();  // fresh run on every entry (Game_Init runs per entry now)
 }
 
-// Pause menu rows (page 0: main, page 1: audio). Row i center-y = 310 + i * 70 (design space).
-static float pause_row_y(int i) { return 310.0f + (float)i * 70.0f; }
-
-static void draw_pause_menu(void) {
-// Dark overlay over the frozen world
-    CP_Settings_RectMode(CP_POSITION_CORNER);
-    CP_Settings_Fill(CP_Color_Create(0, 0, 0, 140));
-    CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    if (gameFont) CP_Font_Set(gameFont);
-    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
-
-    // Banner
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 140.0f, 420.0f, 96.0f);
-    CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
-    CP_Settings_TextSize(54.0f);
-    CP_Font_DrawText(pausePage == 0 ? "PAUSED" : "OPTIONS", SCREEN_WIDTH * 0.5f, 140.0f);
-
-    float rect_x = 610.0f; 
-    float rect_w = 380.0f;
-
-    // Top panel
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 380.0f, 440.0f, 300.0f);
-    CP_Settings_TextSize(40.0f);
-
-    if (pausePage == 0) {
-        const char* rows[] = { "RESUME", "RESTART", "OPTIONS" };
-        for (int i = 0; i < 3; i++) {
-            float ry = pause_row_y(i);
-            // "RESUME", "RESTART", "OPTIONS"
-            if (is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f)) {
-                CP_Settings_RectMode(CP_POSITION_CORNER);
-                CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-                CP_Graphics_DrawRect(rect_x, ry - 28.0f, rect_w, 56.0f);
-            }
-            CP_Settings_Fill(is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-            CP_Font_DrawText(rows[i], SCREEN_WIDTH * 0.5f, ry);
-        }
-    }
-    else { // OPTIONS area:
-        // Audio rows: label + [-] value [+]
-        const char* rows[] = { "MUSIC", "SFX", "BACK" };
-        for (int i = 0; i < 3; i++) {
-            float ry = pause_row_y(i);
-            if (i < 2) {
-                // Centered coordinates: shifted +160px
-                float vol = (i == 0) ? musicVol : sfxVol;
-                
-                float minus_x = 787.0f;  
-                float plus_x  = 922.0f;  
-                float val_x   = 878.0f;  
-                float label_x = 670.0f;  
-
-                bool hovMinus = is_mouse_over(minus_x, ry - 24.0f, 48.0f, 48.0f);
-                bool hovPlus  = is_mouse_over(plus_x, ry - 24.0f, 48.0f, 48.0f);
-
-                CP_Settings_RectMode(CP_POSITION_CORNER);
-                
-                // [-] Button
-                CP_Settings_Fill(hovMinus ? CP_Color_Create(215, 140, 40, 160) : CP_Color_Create(40, 40, 40, 40));
-                CP_Graphics_DrawRect(minus_x, ry - 24.0f, 48.0f, 48.0f);
-                
-                // [+] Button
-                CP_Settings_Fill(hovPlus ? CP_Color_Create(215, 140, 40, 160) : CP_Color_Create(40, 40, 40, 40));
-                CP_Graphics_DrawRect(plus_x, ry - 24.0f, 48.0f, 48.0f);
-
-                // Text labels
-                CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
-                CP_Font_DrawText("-", minus_x + 24.0f, ry);
-                CP_Font_DrawText("+", plus_x + 24.0f, ry);
-                
-                char vbuf[16];
-                sprintf(vbuf, "%d%%", (int)(vol * 100.0f + 0.5f));
-                CP_Font_DrawText(vbuf, val_x, ry);
-                CP_Font_DrawText(rows[i], label_x, ry);
-            }
-            else {
-                // BACK button: uses the centered rect_x (610.0f) and rect_w (380.0f)
-                bool hover = is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f);
-                
-                if (hover) {
-                    CP_Settings_RectMode(CP_POSITION_CORNER);
-                    CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-                    CP_Graphics_DrawRect(rect_x, ry - 28.0f, rect_w, 56.0f);
-                }
-                CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-                CP_Font_DrawText(rows[i], SCREEN_WIDTH * 0.5f, ry);
-            }
-        }
-    }
-
-    // Bottom panel: MENU | QUIT (PixelAdventure has Menu + Desktop)
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 600.0f, 440.0f, 100.0f);
-    CP_Settings_RectMode(CP_POSITION_CORNER);
-
-    // If mouse hovers over MENU button, draw orange rect
-    if (is_mouse_over(580.0f, 572.0f, 200.0f, 56.0f)) {
-        CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        // Format: x-axis, y-axis, width, height
-        CP_Graphics_DrawRect(600.0f, 572.0f, 200.0f, 56.0f);
-    }
-
-    // If mouse hovers over QUIT button, draw orange rect
-    if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
-        CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(800.0f, 572.0f, 200.0f, 56.0f);
-    }
-    // Menu Text dark gray or orange if mouse hover over it
-    CP_Settings_Fill(is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("MENU", 700.0f, 600.0f);
-    // Quit button dark gray or orange if mouse hovers over it.
-    CP_Settings_Fill(is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("QUIT", 900.0f, 600.0f);
-}
-
-static void handle_pause_input(void) {
-    bool clicked = CP_Input_MouseClicked();
-    if (pausePage == 0) {
-        if (!clicked) return;
-        // RESUME, RESTART, OPTION click button area:
-        for (int i = 0; i < 3; i++) {
-            float ry = pause_row_y(i);
-            if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) {
-                if (i == 0) paused = false;  // RESUME
-                else if (i == 1) { restart_from_beginning(); paused = false; }  // RESTART: from beginning
-                else { pausePage = 1; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // OPTIONS
-                play_click();
-                return;
-            }
-        }
-        // MENU click button area:
-        if (is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f)) {
-            CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // MENU: back to title
-            paused = false;
-            if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
-            play_click();
-        } // QUIT click button area:
-        else if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
-            CP_Engine_Terminate();      // QUIT: close the game
-        }
-    }
-    else { // If user click "option" button area, then there's audio, back and menu button click area.
-        if (!clicked) return;
-        for (int i = 0; i < 2; i++) {
-            float ry = pause_row_y(i);
-            float* vol = (i == 0) ? &musicVol : &sfxVol;
-            if (is_mouse_over(787.0f, ry - 24.0f, 48.0f, 48.0f)) {
-                *vol -= 0.1f; if (*vol < 0.0f) *vol = 0.0f;
-                apply_volumes();
-                play_click();
-                return;
-            }
-            if (is_mouse_over(922.0f, ry - 24.0f, 48.0f, 48.0f)) {
-                *vol += 0.1f; if (*vol > 1.0f) *vol = 1.0f;
-                apply_volumes();
-                if (i == 1 && stepSnd) CP_Sound_Play(stepSnd);
-                else play_click();
-                return;
-            }
-        } 
-        float ry = pause_row_y(2);
-        if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) { pausePage = 0; play_click(); }  // BACK click button area
-        if (is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f)) { // MENU click button area
-            CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit); 
-            paused = false;
-            if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
-            play_click();
-        } // QUIT click button area:
-        else if (is_mouse_over(650.0f, 572.0f, 200.0f, 56.0f)) {
-            CP_Engine_Terminate();
-        }
-    }
-}
+// Pause menu (pause_row_y, draw_pause_menu, handle_pause_input) now owned by
+// pause.c — the game loop below calls draw/handle via pause.h.
 
 void game_update(void) {
     // Keep the logical screen in sync with the fullscreen (or resized) window
@@ -1414,9 +796,10 @@ void game_update(void) {
         float dt = CP_System_GetDt();
         if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // clamp hitches, prevents tunneling
 
-        // ESC ("exit" key): open pause menu, step back a page, or resume
+        // ESC ("exit" key): cancel confirm popup, open pause menu, step back a page, or resume
         if (CP_Input_KeyTriggered(KEY_ESCAPE)) {
-            if (!paused) {
+            if (pause_confirm_open()) pause_cancel_confirm();  // ESC closes popup, stays paused
+            else if (!paused) {
                 paused = true; pausePage = 0;
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
             }
@@ -1537,8 +920,8 @@ void game_update(void) {
         // ================= RENDER =================
         CP_Graphics_ClearBackground(CP_Color_Create(33, 31, 48, 255));
         draw_background();      // brown shows through empty (gid 0) cells
-        render_map_json();      // navy tiles cover the rest
-        render_entities();      // checkpoints, enemies, traps from map.json
+        render_map_json();      // navy tiles cover the rest (extract.c)
+        render_entities();      // checkpoints, enemies, traps from map.json (extract.c)
         draw_bullets();           // plant seeds + impact pieces
         CP_Settings_ImageMode(CP_POSITION_CORNER);
 
@@ -1690,6 +1073,11 @@ void game_exit(void) {
     if (playBtnImage) CP_Image_Free(playBtnImage);
     if (volBtnImage) CP_Image_Free(volBtnImage);
     playBtnImage = NULL; volBtnImage = NULL;
+    if (creditBtnImage) CP_Image_Free(creditBtnImage);
+    if (digipenLogoImage) CP_Image_Free(digipenLogoImage);
+    creditBtnImage = NULL; digipenLogoImage = NULL;
+    if (buildlabLogoImage) CP_Image_Free(buildlabLogoImage);
+    buildlabLogoImage = NULL;
     if (bgImage) CP_Image_Free(bgImage);
     if (gameFont) CP_Font_Free(gameFont);
     bgImage = NULL; gameFont = NULL;

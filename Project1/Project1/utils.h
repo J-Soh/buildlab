@@ -27,6 +27,14 @@ extern CP_Sound menuMusic, clickSnd, windowOpenSnd;
 // Settings button art (menu settings button + in-game options button)
 extern CP_Image settingsBtnImage;
 
+// Tile solidity (map.json GIDs): shared by player/enemy/bullet physics in
+// game.c AND spawn-time seating in game.c — so they live here, not extract.c.
+extern int mapWidth, mapHeight;
+extern int* mapData;
+bool tile_is_bg_fill(int gid);
+bool is_solid_cell(int tx, int ty);
+bool is_solid_px(float wx, float wy);
+
 void apply_volumes(void);
 void play_click(void);
 bool is_mouse_over(float x, float y, float width, float height);

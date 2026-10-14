@@ -1,16 +1,4 @@
 ## TO-DO:
-- Add digipen and buildlab logo splash screen (2 seconds interval). Then followed by "All content © 2026 DigiPen Institute of Technology Singapore. All Rights Reserved".
-- Add "Are you sure" box confirmation for during game-pause menu for "restart", "quit", "main menu" buttons
-- add text "Controls" under "settings" icon 
-- Add text "quit" under quit icon 
-- Create "Credits" button (credit.c) that has this info:
-    - Team Members: List all students currently or previously on the team under "Team Members". Students who have not been on the team for an entire semester can be listed under “Special Thanks” if you wish, but must otherwise be listed as regular team members. 
-    - Instructors: Your class instructors (this module).
-    - President: Claude Comair 
-    - Executives: CHU Jason Yeu Tat, Michael GATS, TAN Chek Ming, Prasanna Kumar GHALI, Mandy WONG, Johnny DEEK
-    - Product must display the official DigiPen Singapore logo and copyright top or beginning of the credits. Do not put this at the end of a scrolling credits sequence. The copyright must be the following text: "All content © 20XX DigiPen Institute of Technology Singapore. All Rights Reserved". Replace the “XX” with the current year.
-
-- Check for any warning. Must have less than 5 warnings.
 - Check for any memory leak:
 ```To check for memory leak in Visual Studio, add the following include to your main.c/cpp file:
 #define _CRTDBG_MAP_ALLOC

@@ -8,4 +8,4 @@ void menu_update(void);
 void menu_exit(void);
 
 // Menu button art (defined in menu.c; game_exit frees them at terminate)
-extern CP_Image playBtnImage, volBtnImage;
+extern CP_Image playBtnImage, volBtnImage, creditBtnImage, digipenLogoImage, buildlabLogoImage;

@@ -27,12 +27,24 @@
     <ClCompile Include="utils.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="extract.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pause.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="menu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="game.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="extract.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pause.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

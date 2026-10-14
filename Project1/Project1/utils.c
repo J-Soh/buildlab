@@ -19,6 +19,33 @@ CP_Sound menuMusic = NULL, clickSnd = NULL, windowOpenSnd = NULL;
 // --- Settings button art (menu settings button + in-game options button) ---
 CP_Image settingsBtnImage = NULL;
 
+// --- Tile solidity (map.json GIDs) ---
+// Owned here because is_solid_px is runtime physics (player/enemy/bullet/
+// shadow probes every frame), not just map-creation seating.
+int mapWidth = 0;
+int mapHeight = 0;
+int* mapData = NULL;
+
+// GIDs that look solid but are background fill (transparent to physics)
+bool tile_is_bg_fill(int gid) {
+    return gid == 24 || gid == 112;
+}
+
+// True if the tile CELL is solid (bounds-aware). gid 0 and navy fill pass through.
+bool is_solid_cell(int tx, int ty) {
+    if (tx < 0 || tx >= mapWidth || ty >= mapHeight) return true;  // walls + floor
+    if (ty < 0 || !mapData) return false;                          // open sky
+    int gid = mapData[ty * mapWidth + tx];
+    if (gid <= 0 || tile_is_bg_fill(gid)) return false;
+    return true;
+}
+
+bool is_solid_px(float wx, float wy) {
+    int tx = (int)floorf(wx / TILE_SIZE);  // floorf: negatives map to -1, not 0
+    int ty = (int)floorf(wy / TILE_SIZE);
+    return is_solid_cell(tx, ty);
+}
+
 void apply_volumes(void) {
     CP_Sound_SetGroupVolume(CP_SOUND_GROUP_MUSIC, muted ? 0.0f : musicVol);
     CP_Sound_SetGroupVolume(CP_SOUND_GROUP_SFX, muted ? 0.0f : sfxVol);
