@@ -1,3 +1,8 @@
+// memory leak checker
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -141,11 +146,6 @@ static void spawn_pickup_fx(float wx, float wy) {
     }
 }
 
-
-// -----------------------------------------------------------------------------
-// Helper Functions ("Methods")
-// -----------------------------------------------------------------------------
-
 // Leftmost lowest open pocket with headroom + floor: adapts to map edits
 static void find_spawn_cell(int* outTx, int* outTy) {
     if (!mapData || mapWidth <= 0 || mapHeight <= 0) { *outTx = 0; *outTy = 0; return; }
@@ -198,7 +198,8 @@ static void reset_run(void) {
     for (int i = 0; i < MAX_BULLET_FX; i++) bulletFx[i].active = false;
     for (int i = 0; i < MAX_PICKUP_FX; i++) pickupFx[i].active = false;
 
-    // Re-arm every extracted map object at its spawn point (death / restart)
+    // Re-arm every extracted map object (chicken, bat, trap etc) at its spawn point (death / restart)
+    // vx = velocity x-axis movement
     for (int i = 0; i < entityCount; i++) {
         Entity* e = &entityPool[i];
         const EntityDef* def = &ENTITY_DEFS[e->kind];
@@ -208,7 +209,7 @@ static void reset_run(void) {
             e->vx = 0.0f;  // facing kept from Tiled spawn; update loop drives movement
         } else {
             e->vx = (def->speed > 0.0f) ? (((i & 1) == 0) ? -def->speed : def->speed) : 0.0f;
-            e->facing = e->vx >= 0.0f ? 1 : -1;
+            e->facing = e->vx >= 0.0f ? 1 : -1; // Facing towards right if movement more than 0
         }
         e->vy = 0.0f;
         e->grounded = false;
@@ -218,7 +219,7 @@ static void reset_run(void) {
         e->animState = (e->kind == ENT_BAT) ? 0 : 1; e->stateT = 0.0f; e->deathT = 0.0f;  // bat back to perch, rest to run, clear Hit
     }
 
-    if (respawnSnd) CP_Sound_Play(respawnSnd);
+    if (respawnSnd) CP_Sound_Play(respawnSnd); // play sound whenever player respawn
     camX = player.x + PLAYER_HB_W * 0.5f - SCREEN_WIDTH * 0.5f;
     camY = player.y + PLAYER_HB_H * 0.5f - SCREEN_HEIGHT * 0.5f;
 }

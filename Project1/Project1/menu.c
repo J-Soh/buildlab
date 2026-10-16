@@ -1,8 +1,12 @@
+// memory leak checker
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 #include "cprocessing.h"
 #include "utils.h"
 #include "menu.h"
 #include "game.h"
-
 // --- Menu button art (shared with game_exit, which frees them at terminate) ---
 CP_Image playBtnImage = NULL;
 CP_Image volBtnImage = NULL;

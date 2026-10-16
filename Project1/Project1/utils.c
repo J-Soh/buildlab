@@ -1,5 +1,11 @@
+// memory leak checker
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
 #include "utils.h"
 #include <math.h>
+
 
 // --- Shared canvas (fixed 1600x900 window, synced to live window) ---
 float screenW = 1600.0f, screenH = 900.0f;
