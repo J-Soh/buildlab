@@ -170,9 +170,6 @@ bool aabb_overlap(float ax, float ay, float aw, float ah,
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
 
-// player_physics + hurt_player now owned by player.c (player mechanics).
-// check_player_entity_collisions now owned by entity.c (the enemy half of the seam).
-
 // Draw one frame of an arbitrary cell strip; facing -1 mirrors via swapped U
 // (generic sprite helpers used by player.c / entity.c / game.c renders)
 void draw_sprite_frame(CP_Image img, int frame, float sx, float sy, float drawSize, int facing, int alpha) {

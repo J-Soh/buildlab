@@ -23,15 +23,10 @@ static CP_Image restartBtnImage = NULL;  // gameplay HUD, top-right
 
 // Corner buttons use a fixed 1600x900 top-right layout (48px, no scaling).
 
-// Pause state (paused/pausePage) now owned by pause.c (externs in pause.h) —
-// the game loop below reads/writes the flags, pause.c draws/handles the menu.
-
 // Terrain Tilesheet Handle & Dimensions (fallback if map.png is missing;
 // shared with render_map_json in extract.c via game.h)
 CP_Image terrainSheet = NULL;
 float sheetW = 384.0f; // Width of Terrain (16x16).png
-// (sheetH removed: written once in game_init but never read — the fallback
-// renderer only ever uses sheetW. Nothing else referenced it.)
 
 // Pre-rendered map (Tiled -> Export as Image at 1x = 3200x1600).
 // Drawn as one camera sub-rect per frame; map.json tile data stays for collision only.
@@ -42,14 +37,6 @@ CP_Image mapImage = NULL;
 // shared with render_map_json in extract.c via game.h)
 float camX = 0.0f;
 float camY = 0.0f;
-// (CAM_SPEED removed: the camera snaps to the player every frame, nothing
-// ever moved it at a speed — zero references besides its own definition.)
-
-// Map tile px now owned by extract.c (tileWidth/tileHeight externs in extract.h;
-// load_map_json sets them, render_map_json reads them).
-
-// Player tuning + Player struct + player state now owned by utils.h/utils.c
-// (externs there) — collision lives with them in utils.c.
 
 CP_Image playerIdle = NULL;    // 11 frames (extern in game.h; render_player in player.c reads them)
 CP_Image playerRun = NULL;     // 12 frames
@@ -64,19 +51,11 @@ CP_Sound jumpSnd = NULL;  // extern in game.h; player_handle_input in player.c p
 static CP_Sound respawnSnd = NULL;    // every player spawn
 // (stepSnd + hit/death/coin/playerHit sounds now owned by utils.c — collision plays them)
 
-
 // Hearts HUD (hearts counter now owned by utils.c; art stays here)
 static CP_Image heartImg = NULL;  // 16x16 cells: 0 full, 1 empty
 
-// Dust pool + spawner now owned by utils.c (collision spawns it; game.c sims/draws it).
-
-// Entity types, ENTITY_DEFS table, entity pool + entityScale now owned by
-// extract.c (externs in extract.h) — extraction fills them, gameplay reads them.
-
 static float startX = -1.0f, startY = -1.0f;      // player CENTER, world px (level start from ENT_START; never cleared)
-// (levelComplete + respawnX/respawnY now owned by utils.c — collision sets them)
 
-// Plant shooter shared art + projectile pools now owned by entity.h/entity.c
 // (plant seeds are enemy weapons; game.c reset/loop reach them via entity.h).
 // Bullet images stay here (loaded/freed in game_init/game_exit; extern in game.h).
 CP_Image plantAtkImg = NULL;   // Attack (44x42), 8 frames
@@ -166,28 +145,7 @@ void reset_run(void) {
     camX = player.x + PLAYER_HB_W * 0.5f - SCREEN_WIDTH * 0.5f;
     camY = player.y + PLAYER_HB_H * 0.5f - SCREEN_HEIGHT * 0.5f;
 }
-
-// player_physics + spawn_dust now owned by utils.c (collision lives with player state).
-
-// draw_sprite_frame + draw_sheet_frame now owned by utils.c (generic helpers;
-// player.c / entity.c / game.c renders all use them via utils.h).
-
-
-// update_bullets now owned by entity.c (plant seeds are enemy weapons; body moved verbatim).
-
-
-// update_entities now owned by entity.c (enemy AI + enemy physics; body moved verbatim).
-
-// aabb_overlap + hurt_player + check_player_entity_collisions now owned by
-// utils.c (collision lives with player state) — game loop calls via utils.h.
-
-// render_entities now owned by entity.c (enemies + fruits draw; body moved verbatim).
-
-
- 
-//  extract.c (map render lives with map data)
-// load_map_json, render_map_json, process_layers_world, parse_object_group_entities
-
+  
 // -----------------------------------------------------------------------------
 // Lifecycle Functions
 // -----------------------------------------------------------------------------
@@ -331,8 +289,20 @@ void game_update(void) {
                 if (camY < 0.0f) camY = 0.0f;
             }
 
+            /*
+            (entity.c) constantly checks and updates on:
+            - check if player stomp enemy
+            - enemy hit player
+            - bat fly / sleep
+            - plant shoot pellets
+            - Chicken/Rino patrol walk left / right
+            */
             update_entities(dt);
+
+            // (entity.c) checks if player reach checkpoints, stomp enemies or take dmg.
             check_player_entity_collisions();
+
+            // (entity.c) plant's pellet movement 
             update_bullets(dt);
             }
         } // end of world update (skipped while paused)
@@ -342,13 +312,12 @@ void game_update(void) {
         draw_background();      // brown shows through empty (gid 0) cells
         render_map_json();      // navy tiles cover the rest (extract.c)
         render_entities();      // checkpoints, enemies, traps, fruits (entity.c)
-        draw_bullets();           // plant seeds + impact pieces (entity.c)
+        draw_bullets();         // plant seeds + impact pieces (entity.c)
         CP_Settings_ImageMode(CP_POSITION_CORNER);
 
         render_player();  // shadow + animation select + draw (player.c)
 
-
-        // Dust (fade out)
+        // Dust (fade out) image played whenever player runs or jump on top of enemies.
         for (int i = 0; i < MAX_DUST; i++) {
             if (!dustPool[i].active || !dustImg) continue;
             float k = dustPool[i].life / dustPool[i].maxLife;
