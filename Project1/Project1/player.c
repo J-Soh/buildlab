@@ -66,6 +66,7 @@ void player_physics(float dt) {
 }
 
 // Deal damage to the player (iframe-gated) from an enemy/trap contact
+// player gets knockback in opposite direction
 void hurt_player(void) {
     if (player.invulnT > 0.0f || levelComplete) return;
 
@@ -101,7 +102,7 @@ void player_update(float dt) {
     // --- Jump / double jump ---
     if (player.buffer > 0.0f) {
         if (player.grounded || player.coyote > 0.0f) {
-            player.vy = JUMP_VEL;
+            player.vy = JUMP_VEL; // -980
             player.jumps = 1;
             player.grounded = false;
             player.coyote = 0.0f; player.buffer = 0.0f;
@@ -122,8 +123,8 @@ void player_update(float dt) {
     if (CP_Input_KeyReleased(KEY_SPACE) && player.vy < -350.0f) player.vy = -350.0f;  // variable height
 
     // --- Gravity ---
-    player.vy += GRAVITY * dt;
-    if (player.vy > MAX_FALL) player.vy = MAX_FALL;
+    player.vy += GRAVITY * dt; // 2800 * dt
+    if (player.vy > MAX_FALL) player.vy = MAX_FALL; // 1150: prevent player.vy from going big numbers during the fall.
 
     if (player.grounded) player.coyote = COYOTE_TIME; else player.coyote -= dt;
     player.buffer -= dt;

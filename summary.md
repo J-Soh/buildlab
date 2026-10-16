@@ -44,15 +44,12 @@
 
 ---
 
-/*
-utils.c:
-player_physics + spawn_dust
-
-entity.c:
-render_entities(): (enemies + fruits draw; body moved verbatim).
-update_entities():(enemy AI + enemy physics; body moved verbatim).
-update_bullets(): (plant seeds are enemy weapons; body moved verbatim).
  
-extract.c: (map render lives with map data)
-load_map_json, render_map_json, process_layers_world, parse_object_group_entities
-*/
+`entity.c`:
+- render_entities(): (enemies + fruits draw; body moved verbatim).
+- update_entities():(enemy AI + enemy physics; body moved verbatim).
+- update_bullets(): (plant seeds are enemy weapons; body moved verbatim).
+ 
+`extract.c`: (map render lives with map data)
+- load_map_json, render_map_json, process_layers_world, parse_object_group_entities
+ 

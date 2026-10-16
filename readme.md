@@ -1,3 +1,11 @@
+## Requirements & How to run game:
+- This game requires the approved external library: [cJSON.c](https://github.com/DaveGamble/cJSON/blob/master/cJSON.c), and [cJSON.h](https://github.com/DaveGamble/cJSON/blob/master/cJSON.h)
+- To run this game: 
+    - In VS > File > Open > Project/Solution > click `Project1`.
+    - `Ctrl + shift + B` > `F5`.
+
+---
+
 ## TO-DO:
 - transfer git work repo into git main and backup repo.
 - Check for any memory leak:
@@ -37,13 +45,7 @@ _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 - How level design map is produced:
     - Map was pre-rendered with map.png exported from tile editor.
     - Enemies (Rino, chicken, Bat), traps (saw), checkpoints are marked in tile editor. So this is exported as map.json, which is then extracted into the game coordinates for each items.
-
----
-
-### How to run game:
-- In VS > File > Open > Project/Solution > click `Project1`.
-- `Ctrl + shift + B` > `F5`.
-
+ 
 
 ---
 

@@ -16,7 +16,7 @@
 #define DOUBLE_JUMP_VEL -860.0f
 #define GRAVITY 2800.0f
 #define MAX_FALL 1150.0f
-#define COYOTE_TIME 0.10f
+#define COYOTE_TIME 0.15f
 #define JUMP_BUFFER 0.15f
 
 typedef struct {
