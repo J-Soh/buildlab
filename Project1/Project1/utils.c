@@ -5,6 +5,8 @@
 
 #include "utils.h"
 #include <math.h>
+#include "extract.h" // Entity/EntityDef/ENTITY_DEFS/entityPool (collision reads them)
+#include "game.h"    // reset_run (hurt_player death path; defined in game.c)
 
 
 // --- Shared canvas (fixed 1600x900 window, synced to live window) ---
@@ -121,4 +123,70 @@ void draw_cream_panel(float cx, float cy, float w, float h) {
     // Turn off the stroke so later shapes does not use stroke.
     CP_Settings_NoStroke();
     CP_Settings_RectMode(CP_POSITION_CORNER);
+}
+
+// -----------------------------------------------------------------------------
+// Shared run state + FX pools (player state itself moved to player.h/player.c;
+// enemy behavior moved to entity.h/entity.c)
+// -----------------------------------------------------------------------------
+int hearts = MAX_HEARTS;
+bool levelComplete = false;
+float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px (checkpoint; cleared on fresh start)
+
+CP_Sound playerHitSnd = NULL;  // player stomps an enemy
+CP_Sound hitSnd = NULL;        // player takes a hit
+CP_Sound deathSnd = NULL;
+CP_Sound coinSnd = NULL;
+CP_Sound stepSnd = NULL;       // landing thud (also pause.c SFX preview)
+
+Dust dustPool[MAX_DUST];
+PickupFX pickupFx[MAX_PICKUP_FX];
+
+void spawn_dust(float wx, float wy, float vx, float vy, float life, float size) {
+    for (int i = 0; i < MAX_DUST; i++) {
+        if (!dustPool[i].active) {
+            dustPool[i].active = true;
+            dustPool[i].x = wx; dustPool[i].y = wy;
+            dustPool[i].vx = vx; dustPool[i].vy = vy;
+            dustPool[i].life = dustPool[i].maxLife = life;
+            dustPool[i].size = size;
+            return;
+        }
+    }
+}
+
+void spawn_pickup_fx(float wx, float wy) {
+    for (int i = 0; i < MAX_PICKUP_FX; i++) {
+        if (!pickupFx[i].active) {
+            pickupFx[i].active = true;
+            pickupFx[i].x = wx; pickupFx[i].y = wy; pickupFx[i].t = 0.0f;
+            return;
+        }
+    }
+}
+
+bool aabb_overlap(float ax, float ay, float aw, float ah,
+                  float bx, float by, float bw, float bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+// player_physics + hurt_player now owned by player.c (player mechanics).
+// check_player_entity_collisions now owned by entity.c (the enemy half of the seam).
+
+// Draw one frame of an arbitrary cell strip; facing -1 mirrors via swapped U
+// (generic sprite helpers used by player.c / entity.c / game.c renders)
+void draw_sprite_frame(CP_Image img, int frame, float sx, float sy, float drawSize, int facing, int alpha) {
+    if (!img) return;
+    float u0 = (float)(frame * 32);
+    float u1 = u0 + 32.0f;
+    if (facing < 0) { float t = u0; u0 = u1; u1 = t; }
+    CP_Image_DrawSubImage(img, sx, sy, drawSize, drawSize, u0, 0.0f, u1, 32.0f, alpha);
+}
+
+void draw_sheet_frame(CP_Image img, int cellW, int cellH, int frame, float sx, float sy, float dw, float dh, int facing, int alpha) {
+    if (!img) return;
+    float u0 = (float)(frame * cellW);
+    float u1 = u0 + (float)cellW;
+    if (facing < 0) { float t = u0; u0 = u1; u1 = t; }
+    CP_Image_DrawSubImage(img, sx, sy, dw, dh, u0, 0.0f, u1, (float)cellH, alpha);
 }

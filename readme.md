@@ -1,20 +1,22 @@
 ## TO-DO:
+- transfer git work repo into git main and backup repo.
 - Check for any memory leak:
-```To check for memory leak in Visual Studio, add the following include to your main.c/cpp file:
+```To check for memory leak in Visual Studio, add the following 
+// include to your main.c/cpp file:
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
 
-and this line at the top of your entry point function: 
+// and this line at the top of your entry point function: 
 _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 ```
 #### Code To-Do:
-- Transfer all "collision" code (in game.c) into a function block that resides in "utils.c" file.
+- Completed.
 
 
 ---
 
-Copyright info:
+### Copyright info:
 - buildlab logo created by us.
 - Sounds (step.wav, jump.wav, respawn.wav, player_hit.wav, hit.wav, death.wav, coin.wav, button_click.wav) created from https://www.bfxr.net/
 - Background music: https://freesound.org/people/szegvari/sounds/595750/, menu music: https://freesound.org/people/Sunsai/sounds/415805/
