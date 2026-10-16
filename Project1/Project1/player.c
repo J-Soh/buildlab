@@ -7,6 +7,9 @@
 Player player;
 
 // Axis-separated AABB move + collide against solid tiles
+// doubleAnimT = double-jump animation clock. 
+// doubleAnim latches true when the double jump fires; render_player() uses doubleAnimT x 12 for the flip frame (held at frame 5). 
+// It unlatches (false) on landing or stomp-bounce.
 void player_physics(float dt) {
     // --- X axis ---
     player.x += player.vx * dt;
@@ -67,6 +70,8 @@ void player_physics(float dt) {
 
 // Deal damage to the player (iframe-gated) from an enemy/trap contact
 // player gets knockback in opposite direction
+// invulnT = invulnerability timer (1.4 seconds after a hit, 1.2 after death). 
+// While above 0.0f, hurt_player() and enemy contact do nothing, and the player sprite flashes (alternates 130/255 alpha).
 void hurt_player(void) {
     if (player.invulnT > 0.0f || levelComplete) return;
 
