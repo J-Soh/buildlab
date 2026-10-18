@@ -114,7 +114,6 @@ void skin_picker_draw(void) {
 
     CP_Settings_Fill(CP_Color_Create(80, 80, 80, 255));
     CP_Settings_TextSize(24.0f);
-    CP_Font_DrawText("Blue Astronaut is the default skin", cx, top + 103.0f);
 
     int frame = ((int)(animT * 8.0f)) % 11;
     for (int i = 0; i < SKIN_COUNT; i++) {
