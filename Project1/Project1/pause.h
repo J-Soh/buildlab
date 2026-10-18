@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 extern bool paused;
-extern int pausePage;  // 0 = main (Resume/Restart/Settings), 1 = audio options
+extern int pausePage;  // 0 = main (Resume/Restart/Options/Skins), 1 = audio, 2 = skin picker
 
 void draw_pause_menu(void);
 void handle_pause_input(void);

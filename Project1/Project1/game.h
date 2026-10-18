@@ -24,6 +24,12 @@ void reset_run(void);
 // Player art (defined in game.c; render_player in player.c reads them —
 // loaded/freed in game_init/game_exit, so ownership stays here)
 extern CP_Image playerIdle, playerRun, playerJump, playerDouble, playerFall, shadowImg;
+
+// Skin switching: swap the five player animation strips to the selected skin
+// (skin.c's skinIndex). game_init calls this on every run; pause.c calls it
+// after the picker changes the selection, so the next frame uses the new art.
+void reload_player_skin(void);
+void unload_player_skin(void);
 // Plant/bullet art (defined in game.c; entity.c render reads them)
 extern CP_Image plantAtkImg, bulletImg, piecesImg;
 // Jump SFX (defined in game.c; player_handle_input in player.c plays it)

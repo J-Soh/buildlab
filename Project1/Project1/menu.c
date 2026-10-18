@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "menu.h"
 #include "game.h"
+#include "skin.h"  // skin picker overlay + selected-skin portrait button
 // --- Menu button art (shared with game_exit, which frees them at terminate) ---
 CP_Image playBtnImage = NULL;
 CP_Image volBtnImage = NULL;
@@ -23,6 +24,7 @@ static bool splashShown = false; // splash plays once per exe run, not on quit-t
 // Menu page state
 static bool showSettings = false; // Toggle to view instructions overlay
 static bool showCredits = false; // Toggle to view credits page (info from credit.md)
+static bool showSkins = false;   // Toggle to view the character skin picker
 static bool showQuitConfirm = false; // Quit popup on the main menu (ESC -> "Are you sure...?")
 
 // Forward declarations (defined below menu_update)
@@ -59,6 +61,7 @@ void menu_init(void) {
     if (!clickSnd) clickSnd = CP_Sound_Load("Assets/Sound/button_click.wav");
     if (!windowOpenSnd) windowOpenSnd = CP_Sound_Load("Assets/Sound/window_open.wav");
     if (!menuMusic) menuMusic = CP_Sound_LoadMusic("Assets/Sound/menu_music.wav");
+    skin_init_assets();  // idle portraits for the skin button + picker
     apply_volumes(); // defined in utils.c
 
     // Clean page state on every entry (including quit-to-menu returns).
@@ -66,6 +69,7 @@ void menu_init(void) {
     if (!splashShown) { splashStage = 0; splashT = 0.0f; }
     showSettings = false;
     showCredits = false;
+    showSkins = false;
     showQuitConfirm = false;
 }
 
@@ -95,6 +99,18 @@ void menu_update(void) {
     }
 
     draw_background(); // defined in utils.c
+
+    // Skin picker takes over the screen while open (it draws its own panel).
+    if (showSkins) {
+        skin_picker_draw();
+        if (CP_Input_KeyTriggered(KEY_ESCAPE)) {  // ESC also backs out
+            showSkins = false;
+            play_click();
+            return;
+        }
+        if (skin_picker_handle_input()) showSkins = false;  // BACK clicked
+        return;
+    }
 
     draw_menu_ui();
     handle_menu_input();
@@ -260,10 +276,32 @@ static void draw_menu_ui(void) {
             }
         }
 
+        // Second row: CREDIT + SKIN picker, side by side under the first row.
+        float row2Y = btnY + 130.0f;
+        float row2LabelY = labelY + 130.0f;
+        float creditX = centerX - (btnSize * 0.5f) - btnOffset * 0.5f;
+        float skinX = centerX - (btnSize * 0.5f) + btnOffset * 0.5f;
+
         if (creditBtnImage) {
-            CP_Image_Draw(creditBtnImage, centerX - (btnSize * 0.5f), btnY + 130, btnSize, btnSize, 255);
-            CP_Font_DrawText("Credit", centerX - (btnSize * 0.5f) + 40, labelY + 130); // text below the credit icon
-        } 
+            CP_Image_Draw(creditBtnImage, creditX, row2Y, btnSize, btnSize, 255);
+            CP_Font_DrawText("Credit", creditX + btnSize * 0.5f, row2LabelY); // text below the credit icon
+        }
+
+        // Skin button: portrait of the currently selected character, so the
+        // player can see the active skin before opening the picker.
+        {
+            bool skinHover = is_mouse_over(skinX, row2Y, btnSize, btnSize);
+            skin_draw_preview(skinIndex, skinX, row2Y, btnSize, 0);
+            if (skinHover) {
+                CP_Settings_NoFill();
+                CP_Settings_Stroke(CP_Color_Create(215, 140, 40, 255));
+                CP_Settings_StrokeWeight(4.0f);
+                CP_Graphics_DrawRect(skinX - 4.0f, row2Y - 4.0f, btnSize + 8.0f, btnSize + 8.0f);
+                CP_Settings_NoStroke();
+                CP_Settings_Fill(CP_Color_Create(80, 80, 80, 255));
+            }
+            CP_Font_DrawText("Skin", skinX + btnSize * 0.5f, row2LabelY); // text below the portrait
+        }
 
         if (settingsBtnImage) {
             float sx = centerX - (btnSize * 0.5f) + btnOffset;
@@ -375,10 +413,11 @@ static void handle_menu_input(void) {
 
             float playX = centerX - (btnSize * 0.5f);
             float volX = playX - btnOffset;
-            // Credit icon was moved in draw_menu_ui to a second row under Play:
-            // (centerX - btnSize*0.5f, btnY + 130) — keep this box identical to the draw call
-            float creditX = centerX - (btnSize * 0.5f);
-            float creditY = btnY + 130.0f;
+            // Second row is CREDIT + SKIN side by side (see draw_menu_ui);
+            // keep these boxes identical to the draw calls.
+            float row2Y = btnY + 130.0f;
+            float creditX = centerX - (btnSize * 0.5f) - btnOffset * 0.5f;
+            float skinX = centerX - (btnSize * 0.5f) + btnOffset * 0.5f;
             float settingsX = playX + btnOffset;
 
             if (is_mouse_over(playX, btnY, btnSize, btnSize)) {
@@ -399,8 +438,15 @@ static void handle_menu_input(void) {
                 play_click();
             }
 
-            if (is_mouse_over(creditX, creditY, btnSize, btnSize)) {
+            if (is_mouse_over(creditX, row2Y, btnSize, btnSize)) {
                 showCredits = true;
+                if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
+                play_click();
+            }
+
+            // Skin button: opens the character picker (default blue astronaut).
+            if (is_mouse_over(skinX, row2Y, btnSize, btnSize)) {
+                showSkins = true;
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
                 play_click();
             }

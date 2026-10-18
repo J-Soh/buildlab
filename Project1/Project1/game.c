@@ -16,6 +16,7 @@
 #include "pause.h"   // pause menu state (paused/pausePage) + draw/handle entry points
 #include "player.h"  // player state + update/physics/render entry points
 #include "entity.h"  // enemy AI/render, bullets, player<->entity collisions
+#include "skin.h"    // selected skin (reload_player_skin) + picker preview assets
 
 // Gameplay HUD button (menu buttons moved to menu.c;
 // shared canvas/assets/helpers moved to utils.c)
@@ -147,6 +148,43 @@ void reset_run(void) {
 }
   
 // -----------------------------------------------------------------------------
+// Player skin art
+// -----------------------------------------------------------------------------
+// One animation strip per skin folder. Every file name is identical across the
+// four characters, so only the folder changes when the player picks a skin.
+static CP_Image load_skin_strip(const char* folder, const char* file) {
+    char path[256];
+    snprintf(path, sizeof(path), "Assets/Main Characters/%s/%s", folder, file);
+    return CP_Image_Load(path);
+}
+
+// Free the four non-idle strips and NULL them. The IDLE portrait is borrowed
+// from skin.c (the picker already loads one per skin), because CProcessing
+// returns the same image handle for the same path — freeing it here would
+// dangle the picker card for the previous skin. skin_free_assets owns it.
+// Safe to call repeatedly (game_exit and reload_player_skin both use it).
+void unload_player_skin(void) {
+    if (playerRun) CP_Image_Free(playerRun);
+    if (playerJump) CP_Image_Free(playerJump);
+    if (playerDouble) CP_Image_Free(playerDouble);
+    if (playerFall) CP_Image_Free(playerFall);
+    playerIdle = NULL; playerRun = NULL; playerJump = NULL;
+    playerDouble = NULL; playerFall = NULL;
+}
+
+// Load the currently selected skin (skinIndex, default 0 = blue astronaut).
+void reload_player_skin(void) {
+    skin_init_assets();  // guarantee the shared idle portraits (and playerIdle) exist
+    unload_player_skin();
+    const SkinDef* skin = skin_def(skinIndex);
+    playerIdle = skin_preview_idle(skinIndex);  // borrowed from skin.c (idle strip)
+    playerRun = load_skin_strip(skin->folder, "Run (32x32).png");
+    playerJump = load_skin_strip(skin->folder, "Jump (32x32).png");
+    playerDouble = load_skin_strip(skin->folder, "Double Jump (32x32).png");
+    playerFall = load_skin_strip(skin->folder, "Fall (32x32).png");
+}
+
+// -----------------------------------------------------------------------------
 // Lifecycle Functions
 // -----------------------------------------------------------------------------
 
@@ -185,12 +223,9 @@ void game_init(void) {
         }
     }
 
-    // Virtual Guy sprites (32x32 cells, horizontal strips)
-    playerIdle = CP_Image_Load("Assets/Main Characters/Virtual Guy/Idle (32x32).png");
-    playerRun = CP_Image_Load("Assets/Main Characters/Virtual Guy/Run (32x32).png");
-    playerJump = CP_Image_Load("Assets/Main Characters/Virtual Guy/Jump (32x32).png");
-    playerDouble = CP_Image_Load("Assets/Main Characters/Virtual Guy/Double Jump (32x32).png");
-    playerFall = CP_Image_Load("Assets/Main Characters/Virtual Guy/Fall (32x32).png");
+    // Player sprites for the chosen skin (32x32 cells, horizontal strips).
+    // Defaults to the blue astronaut; the pause menu can change it mid-run.
+    reload_player_skin();
     shadowImg = CP_Image_Load("Assets/Other/Shadow.png");
     dustImg = CP_Image_Load("Assets/Other/Dust Particle.png");
     heartImg = CP_Image_Load("Assets/Main Characters/Hearts.png");
@@ -235,7 +270,7 @@ void game_update(void) {
                 paused = true; pausePage = 0;
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
             }
-            else if (pausePage == 1) pausePage = 0;
+            else if (pausePage != 0) pausePage = 0;  // back out of OPTIONS / SKINS
             else paused = false;
         }
 
@@ -430,12 +465,8 @@ void game_exit(void) {
     if (terrainSheet) CP_Image_Free(terrainSheet);
     if (mapImage) CP_Image_Free(mapImage);
     terrainSheet = NULL; mapImage = NULL;
-    if (playerIdle) CP_Image_Free(playerIdle);
-    if (playerRun) CP_Image_Free(playerRun);
-    if (playerJump) CP_Image_Free(playerJump);
-    if (playerDouble) CP_Image_Free(playerDouble);
-    if (playerFall) CP_Image_Free(playerFall);
-    playerIdle = NULL; playerRun = NULL; playerJump = NULL; playerDouble = NULL; playerFall = NULL;
+    unload_player_skin();  // frees the four owned strips (idle portrait belongs to skin.c)
+    skin_free_assets();    // frees the idle portraits (reloaded by menu_init on return)
     if (shadowImg) CP_Image_Free(shadowImg);
     if (dustImg) CP_Image_Free(dustImg);
     if (heartImg) CP_Image_Free(heartImg);

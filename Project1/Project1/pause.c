@@ -7,12 +7,13 @@
 #include "cprocessing.h"
 #include "utils.h"  // SCREEN_WIDTH, gameFont, musicVol/sfxVol, apply_volumes, play_click, is_mouse_over
 #include "menu.h"   // menu_init/menu_update/menu_exit (pause MENU button returns here)
-#include "game.h"   // restart_from_beginning (RESTART button), stepSnd (SFX preview)
+#include "game.h"   // restart_from_beginning (RESTART button), reload_player_skin, stepSnd (SFX preview)
 #include "pause.h"  // own paused/pausePage flags, draw/input entry points
+#include "skin.h"   // skin picker page + selected-skin state
 
 // Pause menu 
 bool paused = false;
-int pausePage = 0;  // 0 = main (Resume/Restart/Settings), 1 = audio options
+int pausePage = 0;  // 0 = main (Resume/Restart/Options/Skins), 1 = audio options, 2 = skin picker
 
 // Confirm popup for destructive actions (QUIT / RESTART / back-to-MENU):
 // 0 none, 1 quit, 2 restart, 3 back-to-menu.
@@ -25,6 +26,13 @@ static void draw_confirm_popup(void);  // defined after draw_pause_menu
 static float pause_row_y(int i) { return 310.0f + (float)i * 70.0f; }
 
 void draw_pause_menu(void) {
+    // Skin picker owns the whole overlay on page 2 (it draws its own dim +
+    // panel, so the pause banner/panels underneath are skipped).
+    if (pausePage == 2) {
+        skin_picker_draw();
+        return;
+    }
+
 // Dark overlay over the frozen world
     CP_Settings_RectMode(CP_POSITION_CORNER);
     CP_Settings_Fill(CP_Color_Create(0, 0, 0, 140));
@@ -42,15 +50,15 @@ void draw_pause_menu(void) {
     float rect_x = 610.0f; 
     float rect_w = 380.0f;
 
-    // Top panel
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 380.0f, 440.0f, 300.0f);
+    // Top panel (taller on the main page: four rows now)
+    draw_cream_panel(SCREEN_WIDTH * 0.5f, 395.0f, 440.0f, 370.0f);
     CP_Settings_TextSize(40.0f);
 
     if (pausePage == 0) {
-        const char* rows[] = { "RESUME", "RESTART", "OPTIONS" };
-        for (int i = 0; i < 3; i++) {
+        const char* rows[] = { "RESUME", "RESTART", "OPTIONS", "SKINS" };
+        for (int i = 0; i < 4; i++) {
             float ry = pause_row_y(i);
-            // "RESUME", "RESTART", "OPTIONS"
+            // "RESUME", "RESTART", "OPTIONS", "SKINS"
             if (is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f)) {
                 CP_Settings_RectMode(CP_POSITION_CORNER);
                 CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
@@ -112,28 +120,28 @@ void draw_pause_menu(void) {
         }
     }
 
-    // Bottom panel: MENU | QUIT (PixelAdventure has Menu + Desktop)
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 600.0f, 440.0f, 100.0f);
+    // Bottom panel: MENU | QUIT (moved down to clear the taller top panel)
+    draw_cream_panel(SCREEN_WIDTH * 0.5f, 640.0f, 440.0f, 100.0f);
     CP_Settings_RectMode(CP_POSITION_CORNER);
 
     // If mouse hovers over MENU button, draw orange rect
-    if (is_mouse_over(580.0f, 572.0f, 200.0f, 56.0f)) {
+    if (is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f)) {
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
         // Format: x-axis, y-axis, width, height
-        CP_Graphics_DrawRect(600.0f, 572.0f, 200.0f, 56.0f);
+        CP_Graphics_DrawRect(600.0f, 612.0f, 200.0f, 56.0f);
     }
 
     // If mouse hovers over QUIT button, draw orange rect
-    if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
+    if (is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f)) {
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(800.0f, 572.0f, 200.0f, 56.0f);
+        CP_Graphics_DrawRect(800.0f, 612.0f, 200.0f, 56.0f);
     }
     // Menu Text dark gray or orange if mouse hover over it
-    CP_Settings_Fill(is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("MENU", 700.0f, 600.0f);
+    CP_Settings_Fill(is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("MENU", 700.0f, 640.0f);
     // Quit button dark gray or orange if mouse hovers over it.
-    CP_Settings_Fill(is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("QUIT", 900.0f, 600.0f);
+    CP_Settings_Fill(is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("QUIT", 900.0f, 640.0f);
 
     draw_confirm_popup();  // confirm overlay for QUIT / RESTART / back-to-MENU (no-op unless armed)
 }
@@ -231,31 +239,42 @@ void handle_pause_input(void) {
         }
         return;
     }
+    // Page 2: character picker. Picking a card swaps the player art right away
+    // so the new skin is already on screen once the menu is closed.
+    if (pausePage == 2) {
+        int before = skinIndex;
+        bool back = skin_picker_handle_input();
+        if (skinIndex != before) reload_player_skin();
+        if (back) pausePage = 0;  // BACK click sound is played by the picker
+        return;
+    }
+
     bool clicked = CP_Input_MouseClicked();
     if (pausePage == 0) {
         if (!clicked) return;
-        // RESUME, RESTART, OPTION click button area:
-        for (int i = 0; i < 3; i++) {
+        // RESUME, RESTART, OPTIONS, SKINS click button area:
+        for (int i = 0; i < 4; i++) {
             float ry = pause_row_y(i);
             if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) {
                 if (i == 0) paused = false;  // RESUME
                 else if (i == 1) { arm_confirm(2); }  // RESTART: confirm first, then from beginning
-                else { pausePage = 1; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // OPTIONS
+                else if (i == 2) { pausePage = 1; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // OPTIONS
+                else { pausePage = 2; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // SKINS
                 play_click();
                 return;
             }
         }
         // MENU click button area:
-        if (is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f)) {
+        if (is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f)) {
             arm_confirm(3);  // confirm first, then back to title
             play_click();
         } // QUIT click button area:
-        else if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
+        else if (is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f)) {
             arm_confirm(1);  // confirm first, then close the game
             play_click();
         }
     }
-    else { // If user click "option" button area, then there's audio, back and menu button click area.
+    else { // OPTIONS page: audio rows, BACK and the shared MENU / QUIT bar.
         if (!clicked) return;
         for (int i = 0; i < 2; i++) {
             float ry = pause_row_y(i);
@@ -276,11 +295,11 @@ void handle_pause_input(void) {
         } 
         float ry = pause_row_y(2);
         if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) { pausePage = 0; play_click(); }  // BACK click button area
-        if (is_mouse_over(600.0f, 572.0f, 200.0f, 56.0f)) { // MENU click button area
+        if (is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f)) { // MENU click button area
             arm_confirm(3);  // confirm first, then back to title
             play_click();
         } // QUIT click button area:
-        else if (is_mouse_over(800.0f, 572.0f, 200.0f, 56.0f)) {
+        else if (is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f)) {
             arm_confirm(1);  // confirm first, then close the game
             play_click();
         }
