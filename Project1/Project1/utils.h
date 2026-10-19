@@ -47,9 +47,27 @@ void draw_cream_panel(float cx, float cy, float w, float h);
 // generic (aabb, tile solidity, FX pools) remains here.
 // -----------------------------------------------------------------------------
 #define MAX_HEARTS 5
-extern int hearts;              // HUD hearts left (MAX_HEARTS on reset)
+extern int hearts;              // HUD hearts left (maxHearts on reset)
+extern int maxHearts;           // heart cap (5; buff Fortitude raises it)
 extern bool levelComplete;      // End gate reached
 extern float respawnX, respawnY; // player CENTER, world px (checkpoint; cleared on fresh start)
+
+// Points economy + run modifiers: fruits/stomp/bullets feed score, airborne
+// fruits stack combo, finish-line buffs flip the muls (chosen in quiz.c)
+extern int score;
+extern int combo;
+#define COMBO_MAX 8
+extern float moveSpeedMul;      // Swift Feet buff: 1.2x run speed
+extern float enemySpeedMul;     // Fortitude buff: 1.2x enemy speed
+extern int bulletCost;          // Arsenal buff: 10 instead of 25
+typedef struct { bool fortitude, arsenal, swift; } Buffs;
+extern Buffs buffs;
+
+// Score popups (+50 / -25 floaters; pool here like dust, game.c sims/draws)
+#define MAX_POPUPS 16
+typedef struct { bool active; float x, y, t; int amount; } Popup;
+extern Popup popups[MAX_POPUPS];
+void spawn_popup(float wx, float wy, int amount);
 
 // Collision SFX (loaded/freed in game_init/game_exit; played from player.c / entity.c)
 extern CP_Sound playerHitSnd;  // player stomps an enemy

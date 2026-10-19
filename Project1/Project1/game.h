@@ -14,6 +14,10 @@ void game_exit(void);
 extern CP_Image mapImage, terrainSheet;
 extern float sheetW, camX, camY;
 
+// Hit-feel (defined in game.c; entity.c sets them on stomp/bullet kills):
+// hitStopT freezes the sim for a few frames, shakeT jitters the camera
+extern float hitStopT, shakeT;
+
 // Shared with pause.c: fresh-restart helper (RESTART button). Defined in
 // game.c; pause.c reaches it via this, player.c hurt_player via this too.
 void restart_from_beginning(void);

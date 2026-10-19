@@ -130,8 +130,29 @@ void draw_cream_panel(float cx, float cy, float w, float h) {
 // enemy behavior moved to entity.h/entity.c)
 // -----------------------------------------------------------------------------
 int hearts = MAX_HEARTS;
+int maxHearts = MAX_HEARTS;
 bool levelComplete = false;
 float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px (checkpoint; cleared on fresh start)
+
+int score = 0;
+int combo = 1;
+float moveSpeedMul = 1.0f;
+float enemySpeedMul = 1.0f;
+int bulletCost = 25;
+Buffs buffs = { false, false, false };
+
+Popup popups[MAX_POPUPS];
+
+void spawn_popup(float wx, float wy, int amount) {
+    for (int i = 0; i < MAX_POPUPS; i++) {
+        if (!popups[i].active) {
+            popups[i].active = true;
+            popups[i].x = wx; popups[i].y = wy; popups[i].t = 0.0f;
+            popups[i].amount = amount;
+            return;
+        }
+    }
+}
 
 CP_Sound playerHitSnd = NULL;  // player stomps an enemy
 CP_Sound hitSnd = NULL;        // player takes a hit
