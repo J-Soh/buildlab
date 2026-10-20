@@ -1,12 +1,12 @@
 {
     "Version": "1.2",
     "Data": {
-        "Source": "b:\\digipen\\y1t1\\buildlab\\project1\\project1\\skin.h",
+        "Source": "c:\\workflow\\repo\\buildlab\\project1\\project1\\skin.h",
         "ProvidedModule": "",
         "Includes": [
             "c:\\program files\\microsoft visual studio\\18\\community\\vc\\tools\\msvc\\14.51.36231\\include\\stdbool.h",
-            "b:\\digipen\\y1t1\\buildlab\\project1\\extern\\cprocessing\\inc\\cprocessing.h",
-            "b:\\digipen\\y1t1\\buildlab\\project1\\extern\\cprocessing\\inc\\cprocessing_common.h",
+            "c:\\workflow\\repo\\buildlab\\project1\\extern\\cprocessing\\inc\\cprocessing.h",
+            "c:\\workflow\\repo\\buildlab\\project1\\extern\\cprocessing\\inc\\cprocessing_common.h",
             "c:\\program files (x86)\\windows kits\\10\\include\\10.0.26100.0\\um\\windows.h",
             "c:\\program files (x86)\\windows kits\\10\\include\\10.0.26100.0\\shared\\winapifamily.h",
             "c:\\program files (x86)\\windows kits\\10\\include\\10.0.26100.0\\shared\\winpackagefamily.h",

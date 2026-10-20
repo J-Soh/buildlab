@@ -15,6 +15,12 @@ typedef struct { bool active; float x, y, t; } BulletFX;
 extern BulletFX bulletFx[MAX_BULLET_FX];
 #define BULLET_SPEED 420.0f
 
+// Player punctual shots: launched with E, cost bulletCost points (25, or 10
+// with the Arsenal buff), fly flat and pop enemies for +100 (hit-stop).
+#define MAX_PLAYER_BULLETS 12
+typedef struct { bool active; float x, y, vx, life; } PlayerBullet;
+extern PlayerBullet playerBullets[MAX_PLAYER_BULLETS];
+
 void update_entities(float dt);             // enemy AI + enemy physics (bat/chicken/rino/plant)
 void render_entities(void);                 // checkpoints, enemies, traps, fruits
 void check_player_entity_collisions(void);  // checkpoints, stomp, hazards, fruits

@@ -3,10 +3,10 @@
     "revision": 0,
     "rules": [
         {
-            "primary-output": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\.tmp\\Debug-x64\\skin.obj",
+            "primary-output": "C:\\Workflow\\Repo\\buildlab\\Project1\\.tmp\\Debug-x64\\skin.obj",
             "outputs": [
-                "B:\\Digipen\\Y1T1\\buildlab\\Project1\\.tmp\\Debug-x64\\skin.h.obj.dt.module.json",
-                "B:\\Digipen\\Y1T1\\buildlab\\Project1\\.tmp\\Debug-x64\\skin.h.obj.dt.d.json"
+                "C:\\Workflow\\Repo\\buildlab\\Project1\\.tmp\\Debug-x64\\skin.h.obj.dt.module.json",
+                "C:\\Workflow\\Repo\\buildlab\\Project1\\.tmp\\Debug-x64\\skin.h.obj.dt.d.json"
             ],
             "requires": []
         }

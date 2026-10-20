@@ -38,3 +38,5 @@ void unload_player_skin(void);
 extern CP_Image plantAtkImg, bulletImg, piecesImg;
 // Jump SFX (defined in game.c; player_handle_input in player.c plays it)
 extern CP_Sound jumpSnd;
+// Respawn chime (defined in game.c; quiz.c death-quiz survival plays it)
+extern CP_Sound respawnSnd;

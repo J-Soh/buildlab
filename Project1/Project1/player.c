@@ -3,6 +3,7 @@
 #include "utils.h"   // TILE_SIZE, is_solid_px, dust pool, sounds, hearts/levelComplete, draw_sprite_frame
 #include "game.h"    // jumpSnd (jump SFX), camX/camY + player art (render_player)
 #include "player.h"  // own Player state, tuning, entry points
+#include "entity.h"  // playerBullets pool (fired with E)
 
 Player player;
 
@@ -97,10 +98,32 @@ void player_update(float dt) {
     // --- Input: A/D move, SPACE jump/double (single move speed) ---
     bool left = CP_Input_KeyDown(KEY_A);
     bool right = CP_Input_KeyDown(KEY_D);
+    float moveSpeed = MOVE_SPEED * moveSpeedMul;  // Swift Feet buff = 1.2x
     if (player.lockT > 0.0f) player.vx = player.kbx;
-    else if (left && !right) { player.vx = -MOVE_SPEED; player.facing = -1; }
-    else if (right && !left) { player.vx = MOVE_SPEED; player.facing = 1; }
+    else if (left && !right) { player.vx = -moveSpeed; player.facing = -1; }
+    else if (right && !left) { player.vx = moveSpeed; player.facing = 1; }
     else player.vx = 0.0f;
+
+    // Punctual shot on E: spends points, levitates the "pew" (jump SFX, high pitch)
+    if (CP_Input_KeyTriggered(KEY_E)) {
+        if (score >= bulletCost) {
+            for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
+                if (!playerBullets[i].active) {
+                    playerBullets[i].active = true;
+                    playerBullets[i].x = player.x + PLAYER_HB_W * 0.5f + (float)player.facing * 34.0f;
+                    playerBullets[i].y = player.y + PLAYER_HB_H * 0.42f;
+                    playerBullets[i].vx = 900.0f * (float)player.facing;
+                    playerBullets[i].life = 1.0f;
+                    break;
+                }
+            }
+            score -= bulletCost;
+            spawn_popup(player.x + PLAYER_HB_W * 0.5f, player.y, -bulletCost);
+            if (jumpSnd) CP_Sound_PlayAdvanced(jumpSnd, 0.6f, 1.7f, (CP_BOOL)0, CP_SOUND_GROUP_SFX);
+        } else if (hitSnd) {
+            CP_Sound_Play(hitSnd);  // not enough points: dry click
+        }
+    }
 
     if (CP_Input_KeyTriggered(KEY_SPACE)) player.buffer = JUMP_BUFFER;
 

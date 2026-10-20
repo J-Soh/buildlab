@@ -5,9 +5,11 @@
 #include "game.h"    // camX/camY + plant/bullet art (game-owned render state)
 #include "extract.h" // Entity/EntityDef/ENTITY_DEFS/entityPool (spawn fills them, this reads them)
 #include "entity.h"  // own bullet pools, update/render/collision entry points
+#include "quiz.h"    // checkpoint learning topics + End quiz trigger
 
 Bullet bullets[MAX_BULLETS];
 BulletFX bulletFx[MAX_BULLET_FX];
+PlayerBullet playerBullets[MAX_PLAYER_BULLETS];
 
 #define ENT_GRAVITY 2400.0f
 #define ENT_MAX_FALL 950.0f
@@ -203,7 +205,8 @@ void update_entities(float dt) {
                 e->animState = 1;  // Run strip always (no Idle)
                 if (seen) e->facing = (dx >= 0.0f) ? 1 : -1;  // face the player to charge
                 // Patrol-walk when unseen, 2.5x charge when seen (Chicken 225, Rino 325)
-                e->vx = (float)e->facing * def->speed * (seen ? 2.5f : 1.0f);
+                // (enemySpeedMul: Fortitude buff makes everything 20% faster)
+                e->vx = (float)e->facing * def->speed * enemySpeedMul * (seen ? 2.5f : 1.0f);
                 // Step forward: reverse at walls/ledges on patrol, stop on charge
                 // (no reverse, no suicide jumps)
                 float nx = e->x + e->vx * dt;
@@ -321,12 +324,13 @@ void check_player_entity_collisions(void) {
         if (e->kind == ENT_CHECKPOINT || e->kind == ENT_END) {
             if (aabb_overlap(px, py, pw, ph, hx, hy, e->w, e->h)) {
                 if (e->kind == ENT_END) {
-                    levelComplete = true;
+                    levelComplete = true;    // reach the End gate: level done (no quiz)
                 } else if (!e->activated) {
                     e->activated = true;
                     respawnX = e->x;
                     respawnY = e->y;
                     if (coinSnd) CP_Sound_Play(coinSnd);
+                    quiz_start_checkpoint_quiz();   // first touch: 1 quiz -> buff if correct
                 }
             }
             continue;
@@ -334,10 +338,15 @@ void check_player_entity_collisions(void) {
 
         if (e->kind == ENT_START) continue;  // spawn marker only
 
-        // Fruits: collect on touch
+        // Fruits: collect on touch. Airborne grabs stack the combo (up to 8x);
+        // the popup shows the run total so fruits are worth chaining for.
         if (e->kind >= ENT_FRUIT_ORANGE && e->kind <= ENT_FRUIT_STRAWBERRY) {
             if (aabb_overlap(px, py, pw, ph, hx, hy, e->w, e->h)) {
                 e->active = false;
+                if (!player.grounded && combo < COMBO_MAX) combo++;
+                int gained = 50 * combo;
+                score += gained;
+                spawn_popup(e->x, e->y - 14.0f, gained);
                 spawn_pickup_fx(e->x, e->y);  // Collected sparkle at the fruit's center
                 if (coinSnd) CP_Sound_Play(coinSnd);
             }
@@ -365,6 +374,10 @@ void check_player_entity_collisions(void) {
                 e->active = false;
             }
             if (playerHitSnd) CP_Sound_Play(playerHitSnd);  // player stomped an enemy
+            score += 100;
+            spawn_popup(e->x, e->y - e->h * 0.5f, 100);
+            hitStopT = 0.06f;   // freeze a beat so the stomp lands
+            shakeT = 0.18f;     // camera kick
             for (int k = 0; k < 5; k++)
                 spawn_dust(e->x + (float)((k % 3) - 1) * 14.0f, e->y - e->h * 0.2f,
                            (float)((k % 3) - 1) * 90.0f, -140.0f, 0.45f, 18.0f);

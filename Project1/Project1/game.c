@@ -17,6 +17,7 @@
 #include "player.h"  // player state + update/physics/render entry points
 #include "entity.h"  // enemy AI/render, bullets, player<->entity collisions
 #include "skin.h"    // selected skin (reload_player_skin) + picker preview assets
+#include "quiz.h"    // learning quiz overlays (end quiz/buffs/death quiz + toast)
 
 // Gameplay HUD button (menu buttons moved to menu.c;
 // shared canvas/assets/helpers moved to utils.c)
@@ -39,6 +40,11 @@ CP_Image mapImage = NULL;
 float camX = 0.0f;
 float camY = 0.0f;
 
+// Hit-feel (extern in game.h; entity.c sets them on stomps/kills):
+// hitStopT freezes the sim ~6 frames, shakeT jitters the camera ~0.18s
+float hitStopT = 0.0f;
+float shakeT = 0.0f;
+
 CP_Image playerIdle = NULL;    // 11 frames (extern in game.h; render_player in player.c reads them)
 CP_Image playerRun = NULL;     // 12 frames
 CP_Image playerJump = NULL;    // 1 frame
@@ -49,7 +55,7 @@ static CP_Image dustImg = NULL;
 
 static CP_Sound worldMusic = NULL;
 CP_Sound jumpSnd = NULL;  // extern in game.h; player_handle_input in player.c plays it
-static CP_Sound respawnSnd = NULL;    // every player spawn
+CP_Sound respawnSnd = NULL;    // every player spawn (extern in game.h; quiz.c survival plays it)
 // (stepSnd + hit/death/coin/playerHit sounds now owned by utils.c — collision plays them)
 
 // Hearts HUD (hearts counter now owned by utils.c; art stays here)
@@ -91,6 +97,13 @@ static void find_spawn_cell(int* outTx, int* outTy) {
 void reset_run(void);  // defined just below; fwd so the helper can call it (non-static: hurt_player in utils.c calls it)
 void restart_from_beginning(void) {
     respawnX = -1.0f; respawnY = -1.0f;
+    score = 0; combo = 1;                       // points economy fresh
+    maxHearts = MAX_HEARTS;                     // undo Fortitude
+    moveSpeedMul = 1.0f; enemySpeedMul = 1.0f;  // undo buffs' muls
+    bulletCost = 25;                            // undo Arsenal
+    buffs.fortitude = false; buffs.arsenal = false; buffs.swift = false;
+    quiz_reset();                               // forget topics, close overlays
+    hitStopT = 0.0f; shakeT = 0.0f;
     reset_run();
 }
 
@@ -114,8 +127,11 @@ void reset_run(void) {
     player.doubleAnim = false; player.doubleAnimT = 0.0f;
     player.lockT = 0.0f; player.kbx = 0.0f;
     player.invulnT = 0.0f;
-    hearts = MAX_HEARTS;
+    hearts = maxHearts;          // checkpoint respawn restores the (possibly buffed) cap
+    combo = 1;                   // airborne fruit combo resets on respawn
     levelComplete = false;
+    for (int i = 0; i < MAX_POPUPS; i++) popups[i].active = false;
+    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) playerBullets[i].active = false;
     for (int i = 0; i < MAX_DUST; i++) dustPool[i].active = false;
     for (int i = 0; i < MAX_BULLETS; i++) bullets[i].active = false;
     for (int i = 0; i < MAX_BULLET_FX; i++) bulletFx[i].active = false;
@@ -263,8 +279,9 @@ void game_update(void) {
         float dt = CP_System_GetDt();
         if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // clamp hitches, prevents tunneling
 
-        // ESC ("exit" key): cancel confirm popup, open pause menu, step back a page, or resume
-        if (CP_Input_KeyTriggered(KEY_ESCAPE)) {
+        // ESC ("exit" key): when a quiz overlay is open it owns input; else
+        // cancel confirm popup, open pause menu, step back a page, or resume
+        if (CP_Input_KeyTriggered(KEY_ESCAPE) && !quiz_is_active() && !levelComplete) {
             if (pause_confirm_open()) pause_cancel_confirm();  // ESC closes popup, stays paused
             else if (!paused) {
                 paused = true; pausePage = 0;
@@ -274,7 +291,7 @@ void game_update(void) {
             else paused = false;
         }
 
-        if (!paused) {
+        if (!paused && !quiz_is_active()) {
             bgScroll += BG_SCROLL_SPEED * dt;
             if (musicMode != 2 && worldMusic) {
                 CP_Sound_StopGroup(CP_SOUND_GROUP_MUSIC);
@@ -283,8 +300,10 @@ void game_update(void) {
             }
 
             if (!levelComplete) {
+            if (hitStopT > 0.0f) {
+                hitStopT -= dt;  // freeze sim a beat on stomps/kills (camera keeps drawing)
+            } else {
             player_update(dt);  // input + timers + physics + footsteps (player.c)
-
 
             // --- Dust sim ---
             for (int i = 0; i < MAX_DUST; i++) {
@@ -301,6 +320,51 @@ void game_update(void) {
                 if (!pickupFx[i].active) continue;
                 pickupFx[i].t += dt;
                 if (pickupFx[i].t >= (float)PICKUP_FRAMES / PICKUP_FPS) pickupFx[i].active = false;
+            }
+
+            // --- Score popups (+50 / -25) float up and fade (pool in utils.c) ---
+            for (int i = 0; i < MAX_POPUPS; i++) {
+                if (!popups[i].active) continue;
+                popups[i].t += dt;
+                popups[i].y -= 46.0f * dt;
+                if (popups[i].t >= 0.9f) popups[i].active = false;
+            }
+
+            // --- Player bullets: punctual shots launched with E (cost points) ---
+            for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
+                PlayerBullet* pb = &playerBullets[i];
+                if (!pb->active) continue;
+                pb->life -= dt;
+                pb->x += pb->vx * dt;
+                bool dead = (pb->life <= 0.0f) || is_solid_px(pb->x, pb->y);
+                if (!dead) {
+                    for (int k = 0; k < entityCount; k++) {
+                        Entity* ent = &entityPool[k];
+                        if (!ent->active || ent->deathT > 0.0f) continue;
+                        if (ent->kind < ENT_PLANT || ent->kind > ENT_RINO) continue;  // enemies only
+                        if (aabb_overlap(pb->x - 8.0f, pb->y - 8.0f, 16.0f, 16.0f,
+                                         ent->x - ent->w * 0.5f, ent->y - ent->h * 0.5f, ent->w, ent->h)) {
+                            if (ent->hitImg) { ent->animState = 2; ent->stateT = 0.0f; ent->deathT = 0.45f; }
+                            else ent->active = false;
+                            ent->vx = 0.0f; ent->vy = 0.0f; ent->attacking = false; ent->fired = false;
+                            if (hitSnd) CP_Sound_Play(hitSnd);
+                            spawn_popup(ent->x, ent->y - ent->h * 0.5f, 100);
+                            hitStopT = 0.06f; shakeT = 0.18f;
+                            dead = true;
+                            break;
+                        }
+                    }
+                }
+                if (dead) {
+                    pb->active = false;
+                    for (int f = 0; f < MAX_BULLET_FX; f++) {
+                        if (!bulletFx[f].active) {
+                            bulletFx[f].active = true;
+                            bulletFx[f].x = pb->x; bulletFx[f].y = pb->y; bulletFx[f].t = 0.0f;
+                            break;
+                        }
+                    }
+                }
             }
 
             // --- Camera follows player, clamped + pixel-snapped ---
@@ -340,14 +404,43 @@ void game_update(void) {
             // (entity.c) plant's pellet movement 
             update_bullets(dt);
             }
+            }
         } // end of world update (skipped while paused)
+
+        // Quiz overlays keep ticking while the world is frozen (quiz freezes the sim)
+        quiz_update(dt);
+        if (quiz_is_active() && !paused) quiz_handle_input();
 
         // ================= RENDER =================
         CP_Graphics_ClearBackground(CP_Color_Create(33, 31, 48, 255));
         draw_background();      // brown shows through empty (gid 0) cells
+
+        // Screen shake: nudge the world camera for a few frames around hit-feel
+        float savedCamX = camX, savedCamY = camY;
+        if (shakeT > 0.0f) {
+            shakeT -= dt;
+            if (shakeT < 0.0f) shakeT = 0.0f;
+            camX += CP_Random_RangeFloat(-6.0f, 6.0f);
+            camY += CP_Random_RangeFloat(-6.0f, 6.0f);
+        }
+
         render_map_json();      // navy tiles cover the rest (extract.c)
         render_entities();      // checkpoints, enemies, traps, fruits (entity.c)
         draw_bullets();         // plant seeds + impact pieces (entity.c)
+        // Player punctual shots (bullets launched with E)
+        for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
+            if (!playerBullets[i].active) continue;
+            float sx = roundf(playerBullets[i].x - 9.0f - camX);
+            float sy = roundf(playerBullets[i].y - 9.0f - camY);
+            if (sx < -40.0f || sx > SCREEN_WIDTH + 40.0f || sy < -40.0f || sy > SCREEN_HEIGHT + 40.0f) continue;
+            if (piecesImg)
+                draw_sheet_frame(piecesImg, 16, 16, 0, sx, sy, 18.0f, 18.0f, 1, 255);
+            else {
+                CP_Settings_RectMode(CP_POSITION_CORNER);
+                CP_Settings_Fill(CP_Color_Create(255, 220, 90, 255));
+                CP_Graphics_DrawRect(sx, sy, 18.0f, 18.0f);
+            }
+        }
         CP_Settings_ImageMode(CP_POSITION_CORNER);
 
         render_player();  // shadow + animation select + draw (player.c)
@@ -377,11 +470,42 @@ void game_update(void) {
             }
         }
 
-        // HUD: hearts row (top-left)
+        // HUD: score + hearts row (top-left)
+        if (gameFont) CP_Font_Set(gameFont);
+        CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_LEFT, CP_TEXT_ALIGN_V_MIDDLE);
+        CP_Settings_Fill(CP_Color_Create(245, 235, 210, 255));
+        CP_Settings_TextSize(30.0f);
+        {
+            char scoreText[32];
+            snprintf(scoreText, sizeof(scoreText), "SCORE  %d", score);
+            CP_Font_DrawText(scoreText, 16.0f, 78.0f);
+        }
         if (heartImg) {
-            for (int i = 0; i < MAX_HEARTS; i++)
+            for (int i = 0; i < maxHearts; i++)
                 draw_sheet_frame(heartImg, 16, 16, (i < hearts) ? 0 : 1, 16.0f + (float)i * 48.0f, 14.0f, 48.0f, 48.0f, 1, 255);
         }
+
+        // Score popups float up from where the points were earned (world space)
+        if (gameFont) CP_Font_Set(gameFont);
+        CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+        for (int i = 0; i < MAX_POPUPS; i++) {
+            if (!popups[i].active) continue;
+            int alpha = (int)(255.0f * (1.0f - popups[i].t / 0.9f));
+            if (alpha < 0) alpha = 0;
+            bool neg = popups[i].amount < 0;
+            CP_Settings_Fill(neg ? CP_Color_Create(230, 70, 60, alpha)
+                                 : CP_Color_Create(255, 225, 120, alpha));
+            CP_Settings_TextSize(26.0f);
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%+d", popups[i].amount);
+            CP_Font_DrawText(buf, popups[i].x - camX, popups[i].y - camY);
+        }
+
+        // Shake end: HUD/overlays/buttons sit on the steady camera
+        camX = savedCamX;
+        camY = savedCamY;
+
+        quiz_draw_toast();  // checkpoint-quiz status banner (top-center, ~3s)
 
         // Level complete overlay (End object reached)
         if (levelComplete) {
@@ -402,7 +526,7 @@ void game_update(void) {
             }
         }
 
-        if (!paused) {
+        if (!paused && !quiz_is_active()) {
                 // Restart button (top-right): click = fresh run from the beginning
                 if (restartBtnImage) {
                     float rx = SCREEN_WIDTH - 64.0f;
@@ -435,6 +559,8 @@ void game_update(void) {
             draw_pause_menu();
             handle_pause_input();
         }
+
+        quiz_draw_overlay();  // quiz/buff panels sit above HUD + pause
     }
 }
 
