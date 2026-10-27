@@ -329,6 +329,7 @@ void check_player_entity_collisions(void) {
                     e->activated = true;
                     respawnX = e->x;
                     respawnY = e->y;
+                    checkpointScore = score;   // respawn here keeps only the points banked at touch
                     if (coinSnd) CP_Sound_Play(coinSnd);
                     quiz_start_checkpoint_quiz();   // first touch: 1 quiz -> buff if correct
                 }

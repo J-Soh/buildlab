@@ -97,7 +97,7 @@ static void find_spawn_cell(int* outTx, int* outTy) {
 void reset_run(void);  // defined just below; fwd so the helper can call it (non-static: hurt_player in utils.c calls it)
 void restart_from_beginning(void) {
     respawnX = -1.0f; respawnY = -1.0f;
-    score = 0; combo = 1;                       // points economy fresh
+    score = 0; combo = 1; checkpointScore = 0; // points economy fresh
     maxHearts = MAX_HEARTS;                     // undo Fortitude
     moveSpeedMul = 1.0f; enemySpeedMul = 1.0f;  // undo buffs' muls
     bulletCost = 25;                            // undo Arsenal
@@ -128,6 +128,7 @@ void reset_run(void) {
     player.lockT = 0.0f; player.kbx = 0.0f;
     player.invulnT = 0.0f;
     hearts = maxHearts;          // checkpoint respawn restores the (possibly buffed) cap
+    score = checkpointScore;     // death rolls points back to the last checkpoint (or 0 at spawn)
     combo = 1;                   // airborne fruit combo resets on respawn
     levelComplete = false;
     for (int i = 0; i < MAX_POPUPS; i++) popups[i].active = false;

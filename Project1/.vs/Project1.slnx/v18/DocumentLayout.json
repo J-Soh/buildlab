@@ -1,21 +1,21 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Workflow\\Repo\\buildlab\\Project1\\",
+  "WorkspaceRootPath": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\skin.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\skin.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\skin.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\skin.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
@@ -26,20 +26,11 @@
       "DocumentGroups": [
         {
           "DockedHeight": 203,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 3,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "player.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\player.c",
-              "RelativeDocumentMoniker": "Project1\\player.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\player.c",
-              "RelativeToolTip": "Project1\\player.c",
-              "ViewState": "AgIAAFoAAAAAAAAAAAAAAHUAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-10-20T06:49:31.973Z",
-              "EditorCaption": ""
+              "$type": "Bookmark",
+              "Name": "ST:2:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
             },
             {
               "$type": "Bookmark",
@@ -51,42 +42,52 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "player.c",
+              "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\player.c",
+              "RelativeDocumentMoniker": "Project1\\player.c",
+              "ToolTip": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\player.c",
+              "RelativeToolTip": "Project1\\player.c",
+              "ViewState": "AgIAAFoAAAAAAAAAAAAAAHUAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2026-10-20T06:49:31.973Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 1,
               "Title": "quiz.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c",
+              "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\quiz.c",
               "RelativeDocumentMoniker": "Project1\\quiz.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c",
+              "ToolTip": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\quiz.c",
               "RelativeToolTip": "Project1\\quiz.c",
               "ViewState": "AgIAAFoAAAAAAAAAAAAAAGAAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-10-20T06:18:48.035Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-20T06:18:48.035Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
               "Title": "skin.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\skin.c",
+              "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.c",
               "RelativeDocumentMoniker": "Project1\\skin.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\skin.c",
+              "ToolTip": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.c",
               "RelativeToolTip": "Project1\\skin.c",
               "ViewState": "AgIAAC0AAAAAAAAAAAAnwEQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-10-18T14:53:01.837Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-18T14:53:01.837Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
               "Title": "skin.h",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\skin.h",
+              "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.h",
               "RelativeDocumentMoniker": "Project1\\skin.h",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\skin.h",
+              "ToolTip": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.h",
               "RelativeToolTip": "Project1\\skin.h",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-10-18T14:52:57.504Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-18T14:52:57.504Z"
             }
           ]
         },
@@ -96,15 +97,15 @@
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:3:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-            },
-            {
-              "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
             },
             {
               "$type": "Bookmark",
               "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:3:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
             }
           ]
         }

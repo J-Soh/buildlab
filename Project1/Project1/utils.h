@@ -51,6 +51,7 @@ extern int hearts;              // HUD hearts left (maxHearts on reset)
 extern int maxHearts;           // heart cap (5; buff Fortitude raises it)
 extern bool levelComplete;      // End gate reached
 extern float respawnX, respawnY; // player CENTER, world px (checkpoint; cleared on fresh start)
+extern int checkpointScore;      // score at last checkpoint touch; reset_run restores it on respawn
 
 // Points economy + run modifiers: fruits/stomp/bullets feed score, airborne
 // fruits stack combo, finish-line buffs flip the muls (chosen in quiz.c)

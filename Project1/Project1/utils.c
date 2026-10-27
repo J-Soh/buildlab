@@ -133,6 +133,7 @@ int hearts = MAX_HEARTS;
 int maxHearts = MAX_HEARTS;
 bool levelComplete = false;
 float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px (checkpoint; cleared on fresh start)
+int checkpointScore = 0;  // score at last checkpoint touch; reset_run restores it on respawn
 
 int score = 0;
 int combo = 1;
