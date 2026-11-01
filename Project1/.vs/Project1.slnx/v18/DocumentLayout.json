@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\player.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
@@ -43,19 +47,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "game.c",
+              "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\game.c",
+              "RelativeDocumentMoniker": "Project1\\game.c",
+              "ToolTip": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\game.c",
+              "RelativeToolTip": "Project1\\game.c",
+              "ViewState": "AgIAAL8BAAAAAAAAAAAnwOwBAABQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2026-11-01T09:27:03.339Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "player.c",
               "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\player.c",
               "RelativeDocumentMoniker": "Project1\\player.c",
               "ToolTip": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\player.c",
               "RelativeToolTip": "Project1\\player.c",
-              "ViewState": "AgIAAFoAAAAAAAAAAAAAAHUAAAARAAAAAAAAAA==",
+              "ViewState": "AgIAAFoAAAAAAAAAAAAAAGAAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2026-10-20T06:49:31.973Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "quiz.c",
               "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\quiz.c",
               "RelativeDocumentMoniker": "Project1\\quiz.c",
@@ -67,7 +84,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "skin.c",
               "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.c",
               "RelativeDocumentMoniker": "Project1\\skin.c",
@@ -79,7 +96,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "skin.h",
               "DocumentMoniker": "B:\\Digipen\\Y1T1\\buildlab\\Project1\\Project1\\skin.h",
               "RelativeDocumentMoniker": "Project1\\skin.h",

@@ -5,6 +5,9 @@
 
 #include "utils.h"
 #include <math.h>
+#include <stdio.h>   // high score: fopen/fscanf/fprintf
+#include <string.h>  // high score: strrchr on the exe path
+#include <windows.h> // GetModuleFileNameA (place highscore.txt next to the exe)
 #include "extract.h" // Entity/EntityDef/ENTITY_DEFS/entityPool (collision reads them)
 #include "game.h"    // reset_run (hurt_player death path; defined in game.c)
 
@@ -136,6 +139,8 @@ float respawnX = -1.0f, respawnY = -1.0f;  // player CENTER, world px (checkpoin
 int checkpointScore = 0;  // score at last checkpoint touch; reset_run restores it on respawn
 
 int score = 0;
+int highScore = 0;           // best score at the End gate (highscore.txt, below)
+bool newHighScore = false;  // true when the last completion set the record
 int combo = 1;
 float moveSpeedMul = 1.0f;
 float enemySpeedMul = 1.0f;
@@ -208,4 +213,48 @@ void draw_sheet_frame(CP_Image img, int cellW, int cellH, int frame, float sx, f
     float u1 = u0 + (float)cellW;
     if (facing < 0) { float t = u0; u0 = u1; u1 = t; }
     CP_Image_DrawSubImage(img, sx, sy, dw, dh, u0, 0.0f, u1, (float)cellH, alpha);
+}
+
+// -----------------------------------------------------------------------------
+// High score: best score reached at the End gate. Lives in highscore.txt
+// next to the exe (Debug and Release each keep their own copy).
+// load_highscore runs at startup (main.c); record_highscore runs the
+// moment the player reaches the End gate — the first run's score seeds
+// the file, later runs overwrite it only when higher.
+// -----------------------------------------------------------------------------
+static char highscorePath[512] = { 0 };
+
+// Build "<exe folder>\highscore.txt" once; fall back to the CWD if the
+// module path can't be resolved.
+static void highscore_ensure_path(void) {
+    if (highscorePath[0]) return;
+    char exe[512];
+    DWORD n = GetModuleFileNameA(NULL, exe, sizeof exe);
+    if (n > 0 && n < sizeof exe) {
+        char* slash = strrchr(exe, '\\');
+        if (slash) {
+            *slash = 0;
+            snprintf(highscorePath, sizeof highscorePath, "%s\\highscore.txt", exe);
+            return;
+        }
+    }
+    strcpy(highscorePath, "highscore.txt");
+}
+
+void load_highscore(void) {
+    highscore_ensure_path();
+    FILE* f = fopen(highscorePath, "r");
+    if (!f) return;  // first play ever: no file yet, highScore stays 0
+    int v = 0;
+    if (fscanf(f, "%d", &v) == 1 && v > 0) highScore = v;
+    fclose(f);
+}
+
+void record_highscore(void) {
+    newHighScore = (score > highScore);
+    if (!newHighScore) return;
+    highScore = score;
+    highscore_ensure_path();
+    FILE* f = fopen(highscorePath, "w");
+    if (f) { fprintf(f, "%d", highScore); fclose(f); }
 }

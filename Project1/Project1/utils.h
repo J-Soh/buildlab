@@ -56,6 +56,15 @@ extern int checkpointScore;      // score at last checkpoint touch; reset_run re
 // Points economy + run modifiers: fruits/stomp/bullets feed score, airborne
 // fruits stack combo, finish-line buffs flip the muls (chosen in quiz.c)
 extern int score;
+// High score: best score reached at the End gate. Kept in highscore.txt
+// next to the exe (load_highscore at startup, record_highscore the moment
+// the End gate is reached) — the first run's score seeds the file, later
+// runs only overwrite it when higher. newHighScore flags the run that
+// just set the record (level-complete text).
+extern int highScore;
+extern bool newHighScore;
+void load_highscore(void);
+void record_highscore(void);
 extern int combo;
 #define COMBO_MAX 8
 extern float moveSpeedMul;      // Swift Feet buff: 1.2x run speed

@@ -325,6 +325,7 @@ void check_player_entity_collisions(void) {
             if (aabb_overlap(px, py, pw, ph, hx, hy, e->w, e->h)) {
                 if (e->kind == ENT_END) {
                     levelComplete = true;    // reach the End gate: level done (no quiz)
+                    record_highscore();     // seed/update highscore.txt if this run is the best
                 } else if (!e->activated) {
                     e->activated = true;
                     respawnX = e->x;

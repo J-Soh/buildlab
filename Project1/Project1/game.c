@@ -477,9 +477,13 @@ void game_update(void) {
         CP_Settings_Fill(CP_Color_Create(245, 235, 210, 255));
         CP_Settings_TextSize(30.0f);
         {
+            // High score on the left, above the current score
             char scoreText[32];
-            snprintf(scoreText, sizeof(scoreText), "SCORE  %d", score);
-            CP_Font_DrawText(scoreText, 16.0f, 78.0f);
+            char highText[32];
+            snprintf(highText, sizeof(highText), "HIGH SCORE %d", highScore);
+            CP_Font_DrawText(highText, 16.0f, 78.0f);
+            snprintf(scoreText, sizeof(scoreText), "CURRENT SCORE  %d", score);
+            CP_Font_DrawText(scoreText, 16.0f, 110.0f);
         }
         if (heartImg) {
             for (int i = 0; i < maxHearts; i++)
@@ -516,9 +520,23 @@ void game_update(void) {
             CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
             CP_Settings_TextSize(58.0f);
             CP_Font_DrawText("LEVEL COMPLETE", SCREEN_WIDTH * 0.5f, 400.0f);
+            {
+                char scoreText[32];
+                char highText[48];
+                CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
+                CP_Settings_TextSize(30.0f);
+                snprintf(scoreText, sizeof(scoreText), "SCORE  %d", score);
+                CP_Font_DrawText(scoreText, SCREEN_WIDTH * 0.5f, 448.0f);
+                snprintf(highText, sizeof(highText), "%s  %d",
+                         newHighScore ? "NEW HIGH SCORE" : "HIGH SCORE", highScore);
+                CP_Settings_Fill(newHighScore
+                                 ? CP_Color_Create(215, 140, 40, 255)
+                                 : CP_Color_Create(120, 120, 120, 255));
+                CP_Font_DrawText(highText, SCREEN_WIDTH * 0.5f, 484.0f);
+            }
             CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
-            CP_Settings_TextSize(30.0f);
-            CP_Font_DrawText("Click anywhere to return to menu", SCREEN_WIDTH * 0.5f, 500.0f);
+            CP_Settings_TextSize(26.0f);
+            CP_Font_DrawText("Click anywhere to return to menu", SCREEN_WIDTH * 0.5f, 545.0f);
             if (CP_Input_MouseClicked()) {
                 CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // back to title
                 paused = false;
