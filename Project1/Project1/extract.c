@@ -6,34 +6,28 @@
 #include "utils.h"   // TILE_SIZE, SCREEN_WIDTH, mapData/mapWidth/mapHeight, is_solid_px
 #include "game.h"    // mapImage, terrainSheet, sheetW, camX, camY (game-owned render state)
 #include "extract.h" // own types, pool/table, load/render entry points
-// Structures are defined in extract.h file.
 
+// EntityDef Structures are defined in extract.h file.
 const EntityDef ENTITY_DEFS[ENT_COUNT] = {
-    { "Assets/Traps/Saw/On (38x38).png",        NULL, NULL, NULL, NULL, 38, 38, 0.55f, 0.55f, true,  false,   0.0f, 12.0f },
-    { "Assets/Traps/Spikes/Idle.png",           NULL, NULL, NULL, NULL, 16, 16, 0.70f, 0.45f, true,  false,   0.0f,  1.0f },
-    { "Assets/Enemies/Plant/Idle (44x42).png",  NULL, NULL, NULL, "Assets/Enemies/Plant/Hit (44x42).png",
-                                                                            44, 42, 0.60f, 0.60f, false, false,   0.0f,  8.0f },
+    { "Assets/Traps/Saw/On (38x38).png",        NULL, NULL, NULL, NULL, 38, 38, 0.55f, 0.55f, true,  0.0f, 12.0f },
+    { "Assets/Traps/Spikes/Idle.png",           NULL, NULL, NULL, NULL, 16, 16, 0.70f, 0.45f, true,  0.0f,  1.0f },
     { "Assets/Enemies/Chicken/Run (32x34).png", NULL, NULL, NULL, "Assets/Enemies/Chicken/Hit (32x34).png",
-                                                                            32, 34, 0.68f, 0.68f, false, false, 110.0f, 10.0f },
-    { "Assets/Enemies/Bat/Flying (46x30).png",  NULL, "Assets/Enemies/Bat/Idle (46x30).png",
-                                                      "Assets/Enemies/Bat/Flying (46x30).png",
-                                                      "Assets/Enemies/Bat/Hit (46x30).png",
-                                                                            46, 30, 0.60f, 0.60f, false, true,   30.0f,  8.0f },
+                                                                            32, 34, 0.68f, 0.68f, false, 110.0f, 10.0f },
     { "Assets/Enemies/Rino/Run (52x34).png",    NULL, NULL, NULL, "Assets/Enemies/Rino/Hit (52x34).png",
-                                                                            52, 34, 0.68f, 0.68f, false, false, 130.0f,  8.0f },
+                                                                            52, 34, 0.68f, 0.68f, false, 130.0f,  8.0f },
     { "Assets/Items/Checkpoints/Start/Start (Idle).png", NULL, NULL, NULL, NULL,
-                                                                            64, 64, 0.55f, 0.55f, false, false,   0.0f,  1.0f },
+                                                                            64, 64, 0.55f, 0.55f, false, 0.0f,  1.0f },
     { "Assets/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
       "Assets/Items/Checkpoints/Checkpoint/Checkpoint (Flag Idle)(64x64).png",
       NULL, NULL, NULL,
-      64, 64, 0.55f, 0.55f, false, false, 0.0f, 1.0f },
+      64, 64, 0.55f, 0.55f, false, 0.0f, 1.0f },
     { "Assets/Items/Checkpoints/End/End (Idle).png", NULL, NULL, NULL, NULL,
-                                                                            64, 64, 0.55f, 0.55f, false, false,   0.0f,  1.0f },
-    { "Assets/Items/Fruits/Orange.png",     NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Cherries.png",   NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Kiwi.png",       NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Melon.png",      NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
-    { "Assets/Items/Fruits/Strawberry.png", NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, false,   0.0f, 12.0f },
+                                                                            64, 64, 0.55f, 0.55f, false, 0.0f,  1.0f },
+    { "Assets/Items/Fruits/Orange.png",     NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, 0.0f, 12.0f },
+    { "Assets/Items/Fruits/Cherries.png",   NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, 0.0f, 12.0f },
+    { "Assets/Items/Fruits/Kiwi.png",       NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, 0.0f, 12.0f },
+    { "Assets/Items/Fruits/Melon.png",      NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, 0.0f, 12.0f },
+    { "Assets/Items/Fruits/Strawberry.png", NULL, NULL, NULL, NULL, 32, 32, 0.65f, 0.65f, false, 0.0f, 12.0f },
 };
 
 Entity entityPool[MAX_ENTITIES]; // array of 72 slots (defined in line 158)
@@ -47,9 +41,7 @@ static EntityKind kind_from_layer_name(const char* name) {
     if (!name) return ENT_COUNT;
     if (strstr(name, "Saw"))         return ENT_SAW;
     if (strstr(name, "Spikes"))      return ENT_SPIKES;
-    if (strstr(name, "Plant"))       return ENT_PLANT;
     if (strstr(name, "Chicken"))     return ENT_CHICKEN;
-    if (strstr(name, "Bat"))         return ENT_BAT;
     if (strstr(name, "Rino"))        return ENT_RINO;
     if (strstr(name, "Start"))       return ENT_START;
     if (strstr(name, "Checkpoint"))  return ENT_CHECKPOINT;
@@ -83,18 +75,11 @@ static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
     e->active = true; // true = alive (so update/draw/collision can process it)
     e->baseImage = def->path ? CP_Image_Load(def->path) : NULL; // load image's kind sprites (544 x 32 pixels (Kiwi) or 38x38 pixels (Saw))
     e->altImage = def->altPath ? CP_Image_Load(def->altPath) : NULL; // altImage only used by Checkpoint (NoFlag -> Flag)
-    // Per-state strips (Chicken/Bat/Rino Idle-Run/Fly-Hit, Plant Hit); NULL = reuse baseImage
+    // Per-state strips (Chicken/Rino Run-Hit); NULL = reuse baseImage
     e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL;
     e->runImg = def->runPath ? CP_Image_Load(def->runPath) : NULL;
     e->hitImg = def->hitPath ? CP_Image_Load(def->hitPath) : NULL;
-    // Bat-only strip (Ceiling In = alert burst on detection); NULL for the rest.
-    // (Ceiling Out.png is unused for now — say where you want it, e.g. return-home tuck.)
-    if (kind == ENT_BAT) {
-        e->emergeImg = CP_Image_Load("Assets/Enemies/Bat/Ceiling In (46x30).png");
-    } else {
-        e->emergeImg = NULL;
-    }
-    e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;  // start in run/fly state
+    e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;  // start in run state
     e->cellW = def->cellW; // weight of image (e.g. 32)
     e->cellH = def->cellH; // height of image (e.g. 32)
     e->totalFrames = 1;    // updates each frame by 1
@@ -129,7 +114,7 @@ static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
     // Animals are plotted ~1 tile above the ground in Tiled: drop them so their
     // feet rest exactly on top of the first solid tile (no floating, no half-buried).
     // Needs mapData, so the Map tilelayer must come before Enemies in map.json layers.
-    if (mapData && (kind == ENT_CHICKEN || kind == ENT_RINO || kind == ENT_PLANT)) {
+    if (mapData && (kind == ENT_CHICKEN || kind == ENT_RINO)) {
         float halfH2 = e->h * 0.5f;
         float bottom = e->y + halfH2;
         if (is_solid_px(e->x, bottom)) {
@@ -149,25 +134,6 @@ static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
         e->grounded = true;
     }
 
-    // Bat sleeper: tuck into the nearest ceiling (solid tile bottom) above the
-    // plotted point, so it hangs off real tiles instead of open air by the
-    // window edge. Perch is stored into sx/sy, so reset_run and the RETURN leg
-    // both aim at the same ceiling. Needs mapData (Map layer before Enemies).
-    if (kind == ENT_BAT && mapData) {
-        float surface = 0.0f;  // world-y of the ceiling's bottom edge
-        for (float d = 0.0f; d <= TILE_SIZE * 10.0f; d += 4.0f) {
-            float py = wy - d;
-            if (is_solid_px(wx, py)) { surface = ((int)(py / TILE_SIZE) + 1) * TILE_SIZE; break; }
-        }
-        if (surface > 0.0f) {
-            e->x = wx; e->y = surface + e->h * 0.45f;  // body tucked just under the ceiling
-        } else {
-            e->x = wx; e->y = wy;  // open sky above: hover where plotted (old behavior)
-        }
-        e->sx = e->x; e->sy = e->y;
-        e->animState = 0;  // start perched on the ceiling (Idle art)
-    }
-
     // Patrol velocity: 
     // 1st ?: if speed>0 (Chicken 90, Rino 130), go to 2nd `?`. Else vx = 0.
     // 2nd ?: alternate -speed/+speed by even/odd count.
@@ -184,7 +150,7 @@ static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
     // Reset anim/hover timers and state flags
     // (seated animals above already start grounded = true)
     e->animT = 0.0f;
-    if (kind != ENT_CHICKEN && kind != ENT_RINO && kind != ENT_PLANT) e->grounded = false;
+    if (kind != ENT_CHICKEN && kind != ENT_RINO) e->grounded = false;
     e->activated = false;
     return e;
 }
@@ -283,7 +249,7 @@ static void process_layers_world(cJSON* layers) {
                 }
             }
         }
-        // objectgroup (contains fruits (kiwi, melon etc), enemies (plant, chicken etc), checkpoints (start, end)), trap (saw, spikes)
+        // objectgroup (contains fruits, chicken/rino enemies, checkpoints, and traps)
         else if (strcmp(type->valuestring, "objectgroup") == 0) {
             parse_object_group_entities(layer);
         }
@@ -342,8 +308,8 @@ void load_map_json(const char* filepath) {
         int counts[ENT_COUNT] = { 0 };
         for (int i = 0; i < entityCount; i++)
             if (entityPool[i].kind < ENT_COUNT) counts[entityPool[i].kind]++;
-        printf("Entities: saw %d, spikes %d, plant %d, chicken %d, bat %d, rino %d, start %d, checkpoint %d, end %d, orange %d, cherries %d, kiwi %d, melon %d, strawberry %d\n",
-            counts[ENT_SAW], counts[ENT_SPIKES], counts[ENT_PLANT], counts[ENT_CHICKEN], counts[ENT_BAT], counts[ENT_RINO],
+        printf("Entities: saw %d, spikes %d, chicken %d, rino %d, start %d, checkpoint %d, end %d, orange %d, cherries %d, kiwi %d, melon %d, strawberry %d\n",
+            counts[ENT_SAW], counts[ENT_SPIKES], counts[ENT_CHICKEN], counts[ENT_RINO],
             counts[ENT_START], counts[ENT_CHECKPOINT], counts[ENT_END], counts[ENT_FRUIT_ORANGE], counts[ENT_FRUIT_CHERRIES],
             counts[ENT_FRUIT_KIWI], counts[ENT_FRUIT_MELON], counts[ENT_FRUIT_STRAWBERRY]);
     }

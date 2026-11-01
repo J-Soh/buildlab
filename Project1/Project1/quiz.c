@@ -73,12 +73,6 @@ static void apply_buff(int i) {
         hearts = maxHearts;
         enemySpeedMul = 1.2f;
         set_toast("BUFF: FORTITUDE");
-    } else if (i == 1) {
-        buffs.arsenal = true;
-        bulletCost = 10;
-        if (maxHearts > 1) maxHearts -= 1;
-        if (hearts > maxHearts) hearts = maxHearts;
-        set_toast("BUFF: ARSENAL");
     } else {
         buffs.swift = true;
         moveSpeedMul = 1.2f;
@@ -100,7 +94,7 @@ void quiz_handle_input(void) {
     if (!CP_Input_MouseClicked()) return;
 
     if (needBuffPick) {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             float ry = 300.0f + (float)i * 100.0f;
             if (is_mouse_over(460.0f, ry, 680.0f, 84.0f)) {
                 apply_buff(i);
@@ -164,10 +158,9 @@ static void draw_question_panel(void) {
 }
 
 static void draw_buff_panel(void) {
-    static const char* names[3] = { "FORTITUDE", "ARSENAL", "SWIFT FEET" };
-    static const char* descs[3] = {
+    static const char* names[2] = { "FORTITUDE", "SWIFT FEET" };
+    static const char* descs[2] = {
         "+2 Max Hearts  |  Enemies 20% Faster",
-        "Cheaper Bullets (10 pts)  |  -1 Max Heart",
         "+20% Move Speed",
     };
     draw_cream_panel(SCREEN_WIDTH * 0.5f, 450.0f, 760.0f, 560.0f);
@@ -178,7 +171,7 @@ static void draw_buff_panel(void) {
     CP_Settings_TextSize(44.0f);
     CP_Font_DrawText("CORRECT! CHOOSE A BUFF", SCREEN_WIDTH * 0.5f, 220.0f);
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
         float ry = 300.0f + (float)i * 100.0f;
         bool hover = is_mouse_over(460.0f, ry, 680.0f, 84.0f);
         CP_Settings_RectMode(CP_POSITION_CORNER);

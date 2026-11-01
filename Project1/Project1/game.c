@@ -15,7 +15,7 @@
 #include "extract.h" // map extraction: entity types/pool, load_map_json, render_map_json
 #include "pause.h"   // pause menu state (paused/pausePage) + draw/handle entry points
 #include "player.h"  // player state + update/physics/render entry points
-#include "entity.h"  // enemy AI/render, bullets, player<->entity collisions
+#include "entity.h" // enemy AI/render, player<->entity collisions
 #include "skin.h"    // selected skin (reload_player_skin) + picker preview assets
 #include "quiz.h"    // learning quiz overlays (end quiz/buffs/death quiz + toast)
 
@@ -63,15 +63,9 @@ static CP_Image heartImg = NULL;  // 16x16 cells: 0 full, 1 empty
 
 static float startX = -1.0f, startY = -1.0f;      // player CENTER, world px (level start from ENT_START; never cleared)
 
-// (plant seeds are enemy weapons; game.c reset/loop reach them via entity.h).
-// Bullet images stay here (loaded/freed in game_init/game_exit; extern in game.h).
-CP_Image plantAtkImg = NULL;   // Attack (44x42), 8 frames
-CP_Image bulletImg = NULL;     // Bullet 16x16
-CP_Image piecesImg = NULL;     // Bullet Pieces 32x16, 2 frames (impact)
-
 // Fruit pickup sparkle: Collected.png (32x32 cells, 6-frame one-shot, like
 // PixelAdventure's CollectedAnimation). Spawned where a fruit is collected,
-// plays once, then frees its slot. Same pool pattern as BulletFX above.
+// plays once, then frees its slot.
 static CP_Image collectedImg = NULL;
 // (pickup FX pool + spawner now owned by utils.c; game.c sims/draws the sparkle)
 
@@ -105,8 +99,7 @@ void restart_from_beginning(void) {
     score = 0; combo = 1; checkpointScore = 0; // points economy fresh
     maxHearts = MAX_HEARTS;                     // undo Fortitude
     moveSpeedMul = 1.0f; enemySpeedMul = 1.0f;  // undo buffs' muls
-    bulletCost = 25;                            // undo Arsenal
-    buffs.fortitude = false; buffs.arsenal = false; buffs.swift = false;
+    buffs.fortitude = false; buffs.swift = false;
     quiz_reset();                               // forget topics, close overlays
     hitStopT = 0.0f; shakeT = 0.0f;
     reset_run();
@@ -137,17 +130,15 @@ void reset_run(void) {
     combo = 1;                   // airborne fruit combo resets on respawn
     levelComplete = false;
     for (int i = 0; i < MAX_POPUPS; i++) popups[i].active = false;
-    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) playerBullets[i].active = false;
     for (int i = 0; i < MAX_DUST; i++) dustPool[i].active = false;
-    for (int i = 0; i < MAX_BULLETS; i++) bullets[i].active = false;
-    for (int i = 0; i < MAX_BULLET_FX; i++) bulletFx[i].active = false;
     for (int i = 0; i < MAX_PICKUP_FX; i++) pickupFx[i].active = false;
 
-    // Re-arm every extracted map object (chicken, bat, trap etc) at its spawn point (death / restart)
+    // Re-arm every extracted map object (chicken, rino, trap etc) at its spawn point (death / restart)
     // vx = velocity x-axis movement
+    // Entity structure defined in extract.h
     for (int i = 0; i < entityCount; i++) {
         Entity* e = &entityPool[i];
-        const EntityDef* def = &ENTITY_DEFS[e->kind]; // kind = chicken, rino, bat etc
+        const EntityDef* def = &ENTITY_DEFS[e->kind]; // kind = chicken, rino, trap etc
         e->active = true;
         e->x = e->sx; e->y = e->sy;
         if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO) {
@@ -160,8 +151,7 @@ void reset_run(void) {
         e->grounded = false;
         e->activated = false;
         e->animT = 0.0f;
-        e->atkT = 0.0f; e->coolT = 0.0f; e->attacking = false; e->fired = false;
-        e->animState = (e->kind == ENT_BAT) ? 0 : 1; e->stateT = 0.0f; e->deathT = 0.0f;  // bat back to perch, rest to run, clear Hit
+        e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;
     }
 
     if (respawnSnd) CP_Sound_Play(respawnSnd); // play sound whenever player respawn
@@ -264,9 +254,6 @@ void game_init(void) {
     hitSnd = CP_Sound_Load("Assets/Sound/hit.wav");
     deathSnd = CP_Sound_Load("Assets/Sound/death.wav");
     coinSnd = CP_Sound_Load("Assets/Sound/coin.wav");
-    plantAtkImg = CP_Image_Load("Assets/Enemies/Plant/Attack (44x42).png");
-    bulletImg = CP_Image_Load("Assets/Enemies/Plant/Bullet.png");
-    piecesImg = CP_Image_Load("Assets/Enemies/Plant/Bullet Pieces.png");
     apply_volumes();
 
     restart_from_beginning();  // fresh run on every entry (Game_Init runs per entry now)
@@ -330,48 +317,14 @@ void game_update(void) {
             }
 
             // --- Score popups (+50 / -25) float up and fade (pool in utils.c) ---
+            // t = 0, popup floats upward.
+            // t increases every frame (dt) and after 0.9 seconds popups[i].active = false to free slot.
+            // while popups[i].active is still active, it is being printed out in-game for 0.9 seconds (line 401 & 434)
             for (int i = 0; i < MAX_POPUPS; i++) {
                 if (!popups[i].active) continue;
                 popups[i].t += dt;
                 popups[i].y -= 46.0f * dt;
                 if (popups[i].t >= 0.9f) popups[i].active = false;
-            }
-
-            // --- Player bullets: punctual shots launched with E (cost points) ---
-            for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
-                PlayerBullet* pb = &playerBullets[i];
-                if (!pb->active) continue;
-                pb->life -= dt;
-                pb->x += pb->vx * dt;
-                bool dead = (pb->life <= 0.0f) || is_solid_px(pb->x, pb->y);
-                if (!dead) {
-                    for (int k = 0; k < entityCount; k++) {
-                        Entity* ent = &entityPool[k];
-                        if (!ent->active || ent->deathT > 0.0f) continue;
-                        if (ent->kind < ENT_PLANT || ent->kind > ENT_RINO) continue;  // enemies only
-                        if (aabb_overlap(pb->x - 8.0f, pb->y - 8.0f, 16.0f, 16.0f,
-                                         ent->x - ent->w * 0.5f, ent->y - ent->h * 0.5f, ent->w, ent->h)) {
-                            if (ent->hitImg) { ent->animState = 2; ent->stateT = 0.0f; ent->deathT = 0.45f; }
-                            else ent->active = false;
-                            ent->vx = 0.0f; ent->vy = 0.0f; ent->attacking = false; ent->fired = false;
-                            if (hitSnd) CP_Sound_Play(hitSnd);
-                            spawn_popup(ent->x, ent->y - ent->h * 0.5f, 100);
-                            hitStopT = 0.06f; shakeT = 0.18f;
-                            dead = true;
-                            break;
-                        }
-                    }
-                }
-                if (dead) {
-                    pb->active = false;
-                    for (int f = 0; f < MAX_BULLET_FX; f++) {
-                        if (!bulletFx[f].active) {
-                            bulletFx[f].active = true;
-                            bulletFx[f].x = pb->x; bulletFx[f].y = pb->y; bulletFx[f].t = 0.0f;
-                            break;
-                        }
-                    }
-                }
             }
 
             // --- Camera follows player, clamped + pixel-snapped ---
@@ -399,17 +352,13 @@ void game_update(void) {
             (entity.c) constantly checks and updates on:
             - check if player stomp enemy
             - enemy hit player
-            - bat fly / sleep
-            - plant shoot pellets
             - Chicken/Rino patrol walk left / right
             */
             update_entities(dt);
 
-            // (entity.c) checks if player reach checkpoints, stomp enemies or take dmg.
+            // (entity.c) checks if player reach checkpoints, collect fruits,
+            // stomp enemies or take dmg.
             check_player_entity_collisions();
-
-            // (entity.c) plant's pellet movement 
-            update_bullets(dt);
             }
             }
         } // end of world update (skipped while paused)
@@ -433,21 +382,6 @@ void game_update(void) {
 
         render_map_json();      // loads game level map (extract.c)
         render_entities();      // checkpoints, enemies, traps, fruits (entity.c)
-        draw_bullets();         // plant seeds + impact pieces (entity.c)
-        // Player punctual shots (bullets launched with E)
-        for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
-            if (!playerBullets[i].active) continue;
-            float sx = roundf(playerBullets[i].x - 9.0f - camX);
-            float sy = roundf(playerBullets[i].y - 9.0f - camY);
-            if (sx < -40.0f || sx > SCREEN_WIDTH + 40.0f || sy < -40.0f || sy > SCREEN_HEIGHT + 40.0f) continue;
-            if (piecesImg)
-                draw_sheet_frame(piecesImg, 16, 16, 0, sx, sy, 18.0f, 18.0f, 1, 255);
-            else {
-                CP_Settings_RectMode(CP_POSITION_CORNER);
-                CP_Settings_Fill(CP_Color_Create(255, 220, 90, 255));
-                CP_Graphics_DrawRect(sx, sy, 18.0f, 18.0f);
-            }
-        }
         CP_Settings_ImageMode(CP_POSITION_CORNER);
 
         render_player();  // shadow + animation select + draw (player.c)
@@ -501,11 +435,14 @@ void game_update(void) {
         CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
         for (int i = 0; i < MAX_POPUPS; i++) {
             if (!popups[i].active) continue;
+            // t = 0.0 -> alpha = 255, fully visible
+            // t = 0.45 -> alpha ≈ 127, half transparent
+            // t = 0.9  -> alpha = 0, invisible and deactivated
             int alpha = (int)(255.0f * (1.0f - popups[i].t / 0.9f));
             if (alpha < 0) alpha = 0;
             bool neg = popups[i].amount < 0;
-            CP_Settings_Fill(neg ? CP_Color_Create(230, 70, 60, alpha)
-                                 : CP_Color_Create(255, 225, 120, alpha));
+            CP_Settings_Fill(neg ? CP_Color_Create(230, 70, 60, alpha) // coral red / vermilion red
+                                 : CP_Color_Create(255, 225, 120, alpha)); // warm golden yellow
             CP_Settings_TextSize(26.0f);
             char buf[16];
             snprintf(buf, sizeof(buf), "%+d", popups[i].amount);
@@ -629,16 +566,11 @@ void game_exit(void) {
         if (entityPool[i].idleImg) CP_Image_Free(entityPool[i].idleImg);
         if (entityPool[i].runImg) CP_Image_Free(entityPool[i].runImg);
         if (entityPool[i].hitImg) CP_Image_Free(entityPool[i].hitImg);
-        if (entityPool[i].emergeImg) CP_Image_Free(entityPool[i].emergeImg);
         entityPool[i].baseImage = NULL; entityPool[i].altImage = NULL;
         entityPool[i].idleImg = NULL; entityPool[i].runImg = NULL;
-        entityPool[i].hitImg = NULL; entityPool[i].emergeImg = NULL;
+        entityPool[i].hitImg = NULL;
     }
     entityCount = 0;  // spawn pool restarts empty on next entry
-    if (plantAtkImg) CP_Image_Free(plantAtkImg);
-    if (bulletImg) CP_Image_Free(bulletImg);
-    if (piecesImg) CP_Image_Free(piecesImg);
-    plantAtkImg = NULL; bulletImg = NULL; piecesImg = NULL;
     CP_Sound_StopAll();
     if (playerHitSnd) CP_Sound_Free(playerHitSnd);
     if (hitSnd) CP_Sound_Free(hitSnd);

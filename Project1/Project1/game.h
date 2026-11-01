@@ -14,7 +14,7 @@ void game_exit(void);
 extern CP_Image mapImage, terrainSheet;
 extern float sheetW, camX, camY;
 
-// Hit-feel (defined in game.c; entity.c sets them on stomp/bullet kills):
+// Hit-feel (defined in game.c; entity.c sets them on stomp kills):
 // hitStopT freezes the sim for a few frames, shakeT jitters the camera
 extern float hitStopT, shakeT;
 
@@ -34,8 +34,6 @@ extern CP_Image playerIdle, playerRun, playerJump, playerDouble, playerFall, sha
 // after the picker changes the selection, so the next frame uses the new art.
 void reload_player_skin(void);
 void unload_player_skin(void);
-// Plant/bullet art (defined in game.c; entity.c render reads them)
-extern CP_Image plantAtkImg, bulletImg, piecesImg;
 // Jump SFX (defined in game.c; player_handle_input in player.c plays it)
 extern CP_Sound jumpSnd;
 // Respawn chime (defined in game.c; quiz.c death-quiz survival plays it)

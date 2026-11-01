@@ -1,5 +1,25 @@
-﻿  game.c
-  Project1.vcxproj -> B:\Digipen\Y1T1\buildlab\Project1\bin\Debug-x64\Project1.exe
+﻿  entity.c
+  extract.c
+C:\Workflow\VisualStudio\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(16,9): warning C4005: 'false': macro redefinition
+  (compiling source file 'extract.c')
+      C:\Workflow\Repo\buildlab\Project1\Project1\cJSON.c(70,9):
+      see previous definition of 'false'
+  
+C:\Workflow\VisualStudio\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(17,9): warning C4005: 'true': macro redefinition
+  (compiling source file 'extract.c')
+      C:\Workflow\Repo\buildlab\Project1\Project1\cJSON.c(65,9):
+      see previous definition of 'true'
+  
+  game.c
+  main.c
+  menu.c
+  pause.c
+  player.c
+  quiz.c
+  skin.c
+  utils.c
+  Generating Code...
+  Project1.vcxproj -> C:\Workflow\Repo\buildlab\Project1\bin\Debug-x64\Project1.exe
   290 File(s) copied
   1 File(s) copied
   1 File(s) copied

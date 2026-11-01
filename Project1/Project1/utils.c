@@ -31,8 +31,8 @@ CP_Sound menuMusic = NULL, clickSnd = NULL, windowOpenSnd = NULL;
 CP_Image settingsBtnImage = NULL;
 
 // --- Tile solidity (map.json GIDs) ---
-// Owned here because is_solid_px is runtime physics (player/enemy/bullet/
-// shadow probes every frame), not just map-creation seating.
+// Owned here because is_solid_px is runtime physics (player/enemy/shadow
+// probes every frame), not just map-creation seating.
 int mapWidth = 0;
 int mapHeight = 0;
 int* mapData = NULL;
@@ -144,21 +144,25 @@ bool newHighScore = false;  // true when the last completion set the record
 int combo = 1;
 float moveSpeedMul = 1.0f;
 float enemySpeedMul = 1.0f;
-int bulletCost = 25;
-Buffs buffs = { false, false, false };
+Buffs buffs = { false, false };
 
-Popup popups[MAX_POPUPS];
+Popup popups[MAX_POPUPS]; // 16 (in utils.h)
 
-void spawn_popup(float wx, float wy, int amount) {
+// If slot 0 is already displaying something (popups[i].active), then slot 1 is checked if it is empty (!popups[i].active)
+// This occurs if player collect fruits very fast.
+// Example: first popup displays (popups[0]): +150. Second popup display (popups[1]): +200.
+void spawn_popup(float wx, float wy, int amount) { // utils.h (line 77)
     for (int i = 0; i < MAX_POPUPS; i++) {
-        if (!popups[i].active) {
+        if (!popups[i].active) { 
             popups[i].active = true;
             popups[i].x = wx; popups[i].y = wy; popups[i].t = 0.0f;
             popups[i].amount = amount;
             return;
         }
     }
-}
+} // game.c checks if popup is active:
+// t = 0, popup floats upward.
+// t increases every frame (dt) and after 0.9 seconds popups[i].active = false to free slot.
 
 CP_Sound playerHitSnd = NULL;  // player stomps an enemy
 CP_Sound hitSnd = NULL;        // player takes a hit
@@ -182,6 +186,7 @@ void spawn_dust(float wx, float wy, float vx, float vy, float life, float size) 
     }
 }
 
+// create visual sparkle animation (Collected.png)
 void spawn_pickup_fx(float wx, float wy) {
     for (int i = 0; i < MAX_PICKUP_FX; i++) {
         if (!pickupFx[i].active) {
@@ -192,8 +197,18 @@ void spawn_pickup_fx(float wx, float wy) {
     }
 }
 
+// Checks whether two axis-aligned rectangles (between player and enemies/fruits/traps/CheckPoint) overlap.
+// aabb_overlap( player_left,  player_top,  player_width,  player_height,
+//               entity_left,  entity_top,  entity_width,  entity_height );
 bool aabb_overlap(float ax, float ay, float aw, float ah,
                   float bx, float by, float bw, float bh) {
+    // Player: Left = ax, Right = ax + aw. Top = ay. Bottom = ay + ah.
+    // Enemy: Left = bx, Right = bx + bw. Top = by. Bottom = by + bh.
+    // Overlap condition: 
+        // ax < bx + bw (A's left side is before B's right side.)
+        // ax + aw > bx (A's right side is after B's left side.)
+        // ay < by + bh (A's top is above B's bottom.)
+        // ay + ah > by (A's bottom is below B's top.)
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
 

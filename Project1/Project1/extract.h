@@ -13,22 +13,21 @@
 #define MAX_ENTITIES 72
 typedef enum {
     ENT_SAW, ENT_SPIKES, // 0-1
-    ENT_PLANT, ENT_CHICKEN, ENT_BAT, ENT_RINO, // 2-5
-    ENT_START, ENT_CHECKPOINT, ENT_END, // 6-8
-    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY, // 9-13
-    ENT_COUNT // 14
+    ENT_CHICKEN, ENT_RINO, // 2-3
+    ENT_START, ENT_CHECKPOINT, ENT_END, // 4-6
+    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY, // 7-11
+    ENT_COUNT // 12
 } EntityKind;
 
 typedef struct {
     const char* path;
     const char* altPath;   // flattened / activated variant sheet (checkpoint flag)
-    const char* idlePath;  // optional Idle strip; NULL = reuse path (Chicken/Bat/Rino)
+    const char* idlePath;  // optional Idle strip; NULL = reuse path
     const char* runPath;   // optional Run (or Fly) strip; NULL = reuse path
     const char* hitPath;   // optional one-shot Hit strip; NULL = instant remove on stomp
     int cellW, cellH;      // frame cell size on the sheet (source px)
     float hbW, hbH;        // hitbox as a fraction of the scaled cell
     bool hazard;           // non-living damager (saw, spikes)
-    bool flies;            // bat: no gravity, hovers
     float speed;           // patrol speed (world px/s); 0 = stationary
     float animFps;         // animation playback speed
 } EntityDef;
@@ -37,11 +36,10 @@ extern const EntityDef ENTITY_DEFS[ENT_COUNT];
 
 typedef struct {
     EntityKind kind;
-    bool active;
+    bool active;     // true = still in game. false = object no longer in game (like rino dies, or fruit collected already)
     CP_Image baseImage, altImage;
     CP_Image idleImg, runImg, hitImg; // per-state strips (NULL = reuse baseImage)
-    CP_Image emergeImg;              // bat only: Ceiling In alert strip on detection
-    int animState;   // 0 = idle/perched, 1 = run/fly, 2 = hit flash, 3 = bat emerging
+    int animState;   // 1 = run, 2 = hit flash
     float stateT;    // time in current animState
     float deathT;    // >0 = stomped, Hit strip playing, counts down to deactivate
     int totalFrames, cellW, cellH;
@@ -51,8 +49,6 @@ typedef struct {
     float vx, vy;
     int facing;
     float animT;
-    float atkT, coolT;     // plant shooter: attack clock + cooldown
-    bool attacking, fired; // attack anim running / bullet released this cycle
     bool grounded;
     bool activated;        // checkpoint reached -> flag out
 } Entity;

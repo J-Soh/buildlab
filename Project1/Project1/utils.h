@@ -27,7 +27,7 @@ extern CP_Sound menuMusic, clickSnd, windowOpenSnd;
 // Settings button art (menu settings button + in-game options button)
 extern CP_Image settingsBtnImage;
 
-// Tile solidity (map.json GIDs): shared by player/enemy/bullet physics in
+// Tile solidity (map.json GIDs): shared by player/enemy physics in
 // game.c AND spawn-time seating in game.c — so they live here, not extract.c.
 extern int mapWidth, mapHeight;
 extern int* mapData;
@@ -53,7 +53,7 @@ extern bool levelComplete;      // End gate reached
 extern float respawnX, respawnY; // player CENTER, world px (checkpoint; cleared on fresh start)
 extern int checkpointScore;      // score at last checkpoint touch; reset_run restores it on respawn
 
-// Points economy + run modifiers: fruits/stomp/bullets feed score, airborne
+// Points economy + run modifiers: fruits and stomps feed score, airborne
 // fruits stack combo, finish-line buffs flip the muls (chosen in quiz.c)
 extern int score;
 // High score: best score reached at the End gate. Kept in highscore.txt
@@ -69,13 +69,12 @@ extern int combo;
 #define COMBO_MAX 8
 extern float moveSpeedMul;      // Swift Feet buff: 1.2x run speed
 extern float enemySpeedMul;     // Fortitude buff: 1.2x enemy speed
-extern int bulletCost;          // Arsenal buff: 10 instead of 25
-typedef struct { bool fortitude, arsenal, swift; } Buffs;
+typedef struct { bool fortitude, swift; } Buffs;
 extern Buffs buffs;
 
 // Score popups (+50 / -25 floaters; pool here like dust, game.c sims/draws)
 #define MAX_POPUPS 16
-typedef struct { bool active; float x, y, t; int amount; } Popup;
+typedef struct { bool active; float x, y, t; int amount; } Popup; // t = popup’s timer. Start from 0s, until 0.9sec for text to float up.
 extern Popup popups[MAX_POPUPS];
 void spawn_popup(float wx, float wy, int amount);
 
@@ -105,7 +104,7 @@ void spawn_pickup_fx(float wx, float wy);
 
 // Generic collision + FX helpers (definitions in utils.c).
 // Per-actor logic lives in player.h (player_physics, hurt_player) and
-// entity.h (check_player_entity_collisions, update/draw entities + bullets).
+// entity.h (check_player_entity_collisions, update/draw entities).
 bool aabb_overlap(float ax, float ay, float aw, float ah,
                   float bx, float by, float bw, float bh);
 void draw_sprite_frame(CP_Image img, int frame, float sx, float sy, float drawSize, int facing, int alpha);

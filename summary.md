@@ -19,7 +19,7 @@
 game_update()
  ├── Read ESC / pause input
  ├── Update player movement
- ├── Update particles and bullets
+ ├── Update particles
  ├── Move camera
  ├── Update enemies
  ├── Check collisions
@@ -36,8 +36,8 @@ game_update()
   - Read object layers
   - Convert object names into entities such as:
     - Chicken
-    - Bat
-    - Plant
+    - Chicken
+    - Rhino
     - Checkpoint
     - End point
     - Fruits
@@ -56,10 +56,7 @@ game_update()
 - Footstep effects
 
 ### entity.c:
-- Bat behavior
 - Chicken and Rhino movement
-- Plant attacks
-- Plant bullets
 - Traps
 - Fruits
 - Checkpoints
@@ -104,6 +101,5 @@ game_update()
 - The world is frozen while the overlay is open
 - Available buffs include:
   - Fortitude
-  - Arsenal
   - Swift Feet
 ---
