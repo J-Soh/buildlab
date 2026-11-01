@@ -78,15 +78,20 @@ static CP_Image collectedImg = NULL;
 // Leftmost lowest open pocket with headroom + floor: adapts to map edits
 static void find_spawn_cell(int* outTx, int* outTy) {
     if (!mapData || mapWidth <= 0 || mapHeight <= 0) { *outTx = 0; *outTy = 0; return; }
-    for (int tx = 0; tx < mapWidth; tx++) {
-        for (int ty = mapHeight - 1; ty >= 1; ty--) {
-            int i = ty * mapWidth + tx;
+    for (int tx = 0; tx < mapWidth; tx++) { // search left to right (COLUMNS)
+        for (int ty = mapHeight - 1; ty >= 1; ty--) { // search bottom to top (ROWS)
+            // Since mapData is 1D array, we need convert into 2D array:
+            // Formula: index = row (ty) * number_of_columns (mapWidth) + column (tx)
+            // i = 3 * 5 + 2 = 17. So mapData[17] is the tile at column 2, row 3.
+            int i = ty * mapWidth + tx; 
+            // Checks if tile above: empty (headroom), player tile: empty (player occupies here), tile below: solid (floor)
             if (mapData[i] == 0 && mapData[(ty - 1) * mapWidth + tx] == 0 && is_solid_cell(tx, ty + 1)) {
-                *outTx = tx; *outTy = ty;
-                return;
+                *outTx = tx; *outTy = ty; // found spawn position
+                return; // stop searching
             }
         }
     }
+    // fallback: this only runs if above fails to find desired spawn location.
     *outTx = mapWidth / 2; *outTy = mapHeight / 2;
 }
 
@@ -116,7 +121,7 @@ void reset_run(void) {
         player.y = roundf(startY - PLAYER_HB_H * 0.5f);
     } else {
         int tx, ty;
-        find_spawn_cell(&tx, &ty);
+        find_spawn_cell(&tx, &ty); // find spawn location (bottom left conner)
         player.x = tx * TILE_SIZE + (TILE_SIZE - PLAYER_HB_W) * 0.5f;
         player.y = (ty + 1) * TILE_SIZE - PLAYER_HB_H - 1.0f;
     }
@@ -142,7 +147,7 @@ void reset_run(void) {
     // vx = velocity x-axis movement
     for (int i = 0; i < entityCount; i++) {
         Entity* e = &entityPool[i];
-        const EntityDef* def = &ENTITY_DEFS[e->kind];
+        const EntityDef* def = &ENTITY_DEFS[e->kind]; // kind = chicken, rino, bat etc
         e->active = true;
         e->x = e->sx; e->y = e->sy;
         if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO) {
@@ -160,7 +165,8 @@ void reset_run(void) {
     }
 
     if (respawnSnd) CP_Sound_Play(respawnSnd); // play sound whenever player respawn
-    camX = player.x + PLAYER_HB_W * 0.5f - SCREEN_WIDTH * 0.5f;
+    // Keep player centered on screen = player HitBox center - screen center
+    camX = player.x + PLAYER_HB_W * 0.5f - SCREEN_WIDTH * 0.5f; // 
     camY = player.y + PLAYER_HB_H * 0.5f - SCREEN_HEIGHT * 0.5f;
 }
   
@@ -425,7 +431,7 @@ void game_update(void) {
             camY += CP_Random_RangeFloat(-6.0f, 6.0f);
         }
 
-        render_map_json();      // navy tiles cover the rest (extract.c)
+        render_map_json();      // loads game level map (extract.c)
         render_entities();      // checkpoints, enemies, traps, fruits (entity.c)
         draw_bullets();         // plant seeds + impact pieces (entity.c)
         // Player punctual shots (bullets launched with E)

@@ -354,12 +354,16 @@ void load_map_json(const char* filepath) {
 void render_map_json(void) {
     CP_Settings_ImageMode(CP_POSITION_CORNER);
 
-    // Pre-rendered map (like PixelAdventure's map.png): 1 draw of the camera's
-    // sub-rect. map.png is a 1x Tiled export (3200x1600), so map-px = world-px / entityScale.
+    // Pre-rendered map (.png): 1 draw of the camera's sub-rect. 
+    // map.png is in original pixel. Camera position is 3 times size of original pixel. So need convert camera back to original pixel.
+    // In game.c coordinates: cam at 1 pixel = enlarged gameplay pixel (x3), we divide by 3 to get "original" camera tiled pixel pos.
+    // map.png is a 1x Tiled export (3200x1600), so map-px = world-px / entityScale.
     // mapData/map.json is still loaded and used for collision only.
     if (mapImage) {
-        float s = (entityScale > 0.0f) ? entityScale : 3.0f;
+        float s = (entityScale > 0.0f) ? entityScale : 3.0f; // s = entityScale = 3
+        // Converts the camera position from world coordinates (900 pixel) into map.png coordinates (300 map-image pixels)
         float sx0 = camX / s, sy0 = camY / s;
+        // Converts pixel-wide world viewport to original map pixel
         float sw = SCREEN_WIDTH / s, sh = SCREEN_HEIGHT / s;
         CP_Image_DrawSubImage(mapImage, 0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT,
                               sx0, sy0, sx0 + sw, sy0 + sh, 255);
