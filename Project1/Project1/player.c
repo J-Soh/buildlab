@@ -202,25 +202,31 @@ void render_player(void) {
     {
         CP_Image img = playerIdle;
         int frame = 0;
-        if (!player.grounded) {
+        if (!player.grounded) { // if player is in the air (jumping or falling)
             if (player.vy < 0.0f) {
-                if (player.doubleAnim || player.jumps >= 2) {
-                    img = playerDouble;
-                    frame = (int)(player.doubleAnimT * 12.0f);
-                    if (frame > 5) frame = 5;
+                if (player.doubleAnim || player.jumps >= 2) { // if double jump is active or player has used double jump, show double jump animation
+                    img = playerDouble; 
+                    frame = (int)(player.doubleAnimT * 12.0f); // reach last frame after 0.5 seconds (12 fps)
+                    if (frame > 5) frame = 5; // player jump contain max 6 frames (0-5), so if frame > 5, set frame = 5 to hold the last frame of the double jump animation.
                 }
-                else { img = playerJump; frame = 0; }
+                // while player is jumping (but not double jumping), uses normal jump animation
+                else { img = playerJump; frame = 0; } 
             }
+            // player falling uses falling animation 
             else { img = playerFall; frame = 0; }
         }
-        else if (player.vx > 20.0f || player.vx < -20.0f) {
-            img = playerRun;
+        // if player is moving left or right (running)
+        // below 20 || -20 is consirded as standing
+        else if (player.vx > 20.0f || player.vx < -20.0f) { 
+            img = playerRun; // enable running animation
+            // 12 frames per second, so frame = animT * 12.0f, then mod 12 to loop back to frame 0 after frame 11.
             frame = ((int)(player.animT * 12.0f)) % 12;
         }
         else {
             img = playerIdle;
             frame = ((int)(player.animT * 8.0f)) % 11;
         }
+        // player invulnerability flash: if invulnT > 0.0f, then player is flashing (130 alpha) every 1/14 second (7 times per second). Otherwise, player is fully visible (255 alpha).
         int pAlpha = (player.invulnT > 0.0f && ((int)(player.invulnT * 14.0f) % 2 == 0)) ? 130 : 255;
         draw_sprite_frame(img, frame, roundf(player.x - PLAYER_HB_OX - camX), roundf(player.y - PLAYER_HB_OY - camY), 32.0f * PLAYER_SCALE, player.facing, pAlpha);
     }

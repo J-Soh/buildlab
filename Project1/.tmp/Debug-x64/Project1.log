@@ -11,13 +11,7 @@ C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\
       C:\Workflow\Repo\buildlab\Project1\Project1\cJSON.c(65,9):
       see previous definition of 'true'
   
-  main.c
-  menu.c
-  pause.c
   player.c
-  quiz.c
-  skin.c
-  utils.c
   Generating Code...
   Project1.vcxproj -> C:\Workflow\Repo\buildlab\Project1\bin\Debug-x64\Project1.exe
   290 File(s) copied
