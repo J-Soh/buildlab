@@ -159,23 +159,41 @@ void render_player(void) {
 
     // Shadow: cast down from feet, shrink/fade with distance
     {
+        // locate player feet to draw shadow blob (get x-center, then y-bottom (player's feet))
         float feetCX = player.x + PLAYER_HB_W * 0.5f;
         float feetY = player.y + PLAYER_HB_H;
-        float groundTop = -1.0f;
+
+        float groundTop = -1.0f; // set as (-1) "not found yet", which is replaced by the first solid pixel below the player feet (up to 300px down)
         for (float wy = feetY + 4.0f; wy < feetY + 300.0f; wy += 6.0f) {
-            if (is_solid_px(feetCX, wy)) {
+            // utils.c: is_solid_px() checks if the pixel at (x, y) is solid (collidable)
+            if (is_solid_px(feetCX, wy)) { 
+                // wy is world-pixel coordinate, so wy / TILE_SIZE gives tile-row number (150 / 48 = 3.125 = 3 (int))
+                // 3 * TILE_SIZE = 3 * 48 = 144, which is the top of the solid tile (groundTop) that is below the player feet.
                 groundTop = ((int)(wy / TILE_SIZE)) * TILE_SIZE;
-                break;
+                break; // once found solid tile, stop searching down.
             }
         }
         if (shadowImg && groundTop > 0.0f) {
+            // dist = Vertical distance between player feet and the ground. 
+            // Small dist = player close to ground. 
+            // Big dist = player far from ground. Shadow blob shrinks and fades with distance.
             float dist = groundTop - feetY;
-            float k = 1.0f - dist / 300.0f;
+            // k = 1.0 when dist = 0 (player feet on ground)
+            // k = 0.0 when dist = 300 (player far from ground).
+            float k = 1.0f - dist / 300.0f; // k normalized to [0.0, 1.0] for shadow size/alpha scaling
             if (k < 0.0f) k = 0.0f;
+            // sw = shadow width = 20 + 28 * k (min 20: far from ground, max 48: close to ground)
             float sw = 20.0f + 28.0f * k;
+            // alpha (shadow) = min 60 (far from ground) = Light shadow, max 200 (close to ground) = Dark shadow
             int alpha = 60 + (int)(140.0f * k);
+            // width and height of shadowImg (u, v) are used to draw the subimage of the shadow blob.
             float u = (float)CP_Image_GetWidth(shadowImg);
             float v = (float)CP_Image_GetHeight(shadowImg);
+            //  CP_Image_DrawSubImage(image, destination X, destination Y, destination width, destination height, source left, source top, source right, source bottom, opacity)
+            // -camY: converts world Y to screen Y.
+            // roundf(feetCX - sw * 0.5f - camX) = place shadow centered below player
+            // roundf(groundTop - 10.0f - camY) = place shadow 10px above the ground.
+            // 14.0f, 0.0f, 0.0f, u, v = shadow image size and source rectangle (full image)
             CP_Image_DrawSubImage(shadowImg, roundf(feetCX - sw * 0.5f - camX), roundf(groundTop - 10.0f - camY), sw, 14.0f, 0.0f, 0.0f, u, v, alpha);
         }
     }

@@ -205,6 +205,9 @@ void pause_cancel_confirm(void) {
 
 // Arms the confirm popup for a destructive action (1 quit, 2 restart, 3 back-to-menu).
 // Nothing happens yet — YES in the popup runs it via run_confirmed_action below.
+// arm_confirm(1) = QUIT: confirm first, then close the game
+// arm_confirm(2) = RESTART: confirm first, then restart from beginning
+// arm_confirm(3) = MENU: confirm first, then back to title
 static void arm_confirm(int action) {
     confirmAction = action;
     showConfirm = true;
@@ -250,11 +253,11 @@ void handle_pause_input(void) {
     }
 
     bool clicked = CP_Input_MouseClicked();
-    if (pausePage == 0) {
+    if (pausePage == 0) { // main pause menu: RESUME, RESTART, OPTIONS, SKINS, MENU, QUIT
         if (!clicked) return;
         // RESUME, RESTART, OPTIONS, SKINS click button area:
         for (int i = 0; i < 4; i++) {
-            float ry = pause_row_y(i);
+            float ry = pause_row_y(i); // 4 buttons are stacked vertically on top of each other: 310, 380, 450, 520
             if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) {
                 if (i == 0) paused = false;  // RESUME
                 else if (i == 1) { arm_confirm(2); }  // RESTART: confirm first, then from beginning

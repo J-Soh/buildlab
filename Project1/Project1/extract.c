@@ -76,7 +76,7 @@ static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
     e->baseImage = def->path ? CP_Image_Load(def->path) : NULL; // load image's kind sprites (544 x 32 pixels (Kiwi) or 38x38 pixels (Saw))
     e->altImage = def->altPath ? CP_Image_Load(def->altPath) : NULL; // altImage only used by Checkpoint (NoFlag -> Flag)
     // Per-state strips (Chicken/Rino Run-Hit); NULL = reuse baseImage
-    e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL;
+    // e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL; (no idle strip for any entity)
     e->runImg = def->runPath ? CP_Image_Load(def->runPath) : NULL;
     e->hitImg = def->hitPath ? CP_Image_Load(def->hitPath) : NULL;
     e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;  // start in run state
@@ -336,29 +336,29 @@ void render_map_json(void) {
         return;
     }
 
-    // Fallback: per-tile render from the tilesheet map.json (only if map.png missing)
-    if (!mapData || !terrainSheet) return;
-    int tilesPerRowInSheet = (int)(sheetW / tileWidth);
-    if (tilesPerRowInSheet < 1) tilesPerRowInSheet = 1;
+    // Fallback: per-tile render from the tilesheet map.json (only if map.png missing):
+    // if (!mapData || !terrainSheet) return;
+    // int tilesPerRowInSheet = (int)(sheetW / tileWidth);
+    // if (tilesPerRowInSheet < 1) tilesPerRowInSheet = 1;
 
-    for (int y = 0; y < mapHeight; y++) {
-        for (int x = 0; x < mapWidth; x++) {
-            int tileIndex = y * mapWidth + x;
-            int tileGid = mapData[tileIndex];
+    // for (int y = 0; y < mapHeight; y++) {
+    //     for (int x = 0; x < mapWidth; x++) {
+    //         int tileIndex = y * mapWidth + x;
+    //         int tileGid = mapData[tileIndex];
 
-            if (tileGid <= 0) continue;
+    //         if (tileGid <= 0) continue;
 
-            float screenX = x * TILE_SIZE - camX;
-            float screenY = y * TILE_SIZE - camY;
+    //         float screenX = x * TILE_SIZE - camX;
+    //         float screenY = y * TILE_SIZE - camY;
 
-            if (screenX < -TILE_SIZE || screenX > SCREEN_WIDTH ||
-                screenY < -TILE_SIZE || screenY > SCREEN_HEIGHT) continue;
+    //         if (screenX < -TILE_SIZE || screenX > SCREEN_WIDTH ||
+    //             screenY < -TILE_SIZE || screenY > SCREEN_HEIGHT) continue;
 
-            int tileId = tileGid - 1;
-            float cropX = (float)((tileId % tilesPerRowInSheet) * tileWidth);
-            float cropY = (float)((tileId / tilesPerRowInSheet) * tileHeight);
+    //         int tileId = tileGid - 1;
+    //         float cropX = (float)((tileId % tilesPerRowInSheet) * tileWidth);
+    //         float cropY = (float)((tileId / tilesPerRowInSheet) * tileHeight);
 
-            CP_Image_DrawSubImage(terrainSheet, screenX, screenY, TILE_SIZE, TILE_SIZE, cropX, cropY, cropX + (float)tileWidth, cropY + (float)tileHeight, 255);
-        }
-    }
+    //         CP_Image_DrawSubImage(terrainSheet, screenX, screenY, TILE_SIZE, TILE_SIZE, cropX, cropY, cropX + (float)tileWidth, cropY + (float)tileHeight, 255);
+    //     }
+    // }
 }

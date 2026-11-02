@@ -173,9 +173,9 @@ CP_Sound stepSnd = NULL;       // landing thud (also pause.c SFX preview)
 Dust dustPool[MAX_DUST];
 PickupFX pickupFx[MAX_PICKUP_FX];
 
-void spawn_dust(float wx, float wy, float vx, float vy, float life, float size) {
-    for (int i = 0; i < MAX_DUST; i++) {
-        if (!dustPool[i].active) {
+void spawn_dust(float wx, float wy, float vx, float vy, float life, float size) { // player.c calls this when player lands on ground, stomps an enemy, or jumps.
+    for (int i = 0; i < MAX_DUST; i++) { // 96 dust particles (in utils.h)
+        if (!dustPool[i].active) { // check if dustPool[i] is not active, then spawn a new dust particle
             dustPool[i].active = true;
             dustPool[i].x = wx; dustPool[i].y = wy;
             dustPool[i].vx = vx; dustPool[i].vy = vy;

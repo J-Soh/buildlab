@@ -104,7 +104,7 @@ void render_entities(void) {
         bool hasStates = e->idleImg || e->runImg || e->hitImg;
         if (hasStates) {
             if (e->animState == 2 && e->hitImg) img = e->hitImg;
-            else if (e->animState == 0 && e->idleImg) img = e->idleImg;
+            // else if (e->animState == 0 && e->idleImg) img = e->idleImg; // no idle strip for any entity
             else if (e->animState == 1 && e->runImg) img = e->runImg;
             else if (e->baseImage) img = e->baseImage;
         }

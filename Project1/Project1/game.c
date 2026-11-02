@@ -206,7 +206,7 @@ void game_init(void) {
     // This loads only gameplay assets here (guards skip anything already loaded,
     // since quitting to menu and back re-enters this state).
     CP_Settings_ImageMode(CP_POSITION_CORNER);
-    CP_Settings_ImageFilterMode(CP_IMAGE_FILTER_NEAREST);
+    CP_Settings_ImageFilterMode(CP_IMAGE_FILTER_NEAREST); // make image look pixelated (no blur) when scaled up
 
     // Full gameplay loads (game_exit frees + NULLs everything on every exit,
     // so each entry reloads cleanly with no leaks or duplicated entities).
@@ -254,7 +254,7 @@ void game_init(void) {
     hitSnd = CP_Sound_Load("Assets/Sound/hit.wav");
     deathSnd = CP_Sound_Load("Assets/Sound/death.wav");
     coinSnd = CP_Sound_Load("Assets/Sound/coin.wav");
-    apply_volumes();
+    apply_volumes(); // utils.c
 
     restart_from_beginning();  // fresh run on every entry (Game_Init runs per entry now)
 }
@@ -271,7 +271,7 @@ void game_update(void) {
     // so the old STATE_MENU / STATE_GAME switch is gone).
     {
         float dt = CP_System_GetDt();
-        if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // clamp hitches, prevents tunneling
+        if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // prevents background tearing
 
         // ESC ("exit" key): when a quiz overlay is open it owns input; else
         // cancel confirm popup, open pause menu, step back a page, or resume
@@ -286,7 +286,7 @@ void game_update(void) {
         }
 
         if (!paused && !quiz_is_active()) {
-            bgScroll += BG_SCROLL_SPEED * dt;
+            bgScroll += BG_SCROLL_SPEED * dt; // background scrolls while the world is active (paused freezes it)
             if (musicMode != 2 && worldMusic) {
                 CP_Sound_StopGroup(CP_SOUND_GROUP_MUSIC);
                 CP_Sound_PlayAdvanced(worldMusic, musicVol, 1.0f, (CP_BOOL)1, CP_SOUND_GROUP_MUSIC);
@@ -299,22 +299,27 @@ void game_update(void) {
             } else {
             player_update(dt);  // input + timers + physics + footsteps (player.c)
 
-            // --- Dust sim ---
+            // --- Dust sim --- (defined in utils.c; game.c updates it while the world is active)
             for (int i = 0; i < MAX_DUST; i++) {
-                if (!dustPool[i].active) continue;
-                dustPool[i].life -= dt;
+                if (!dustPool[i].active) continue; 
+                dustPool[i].life -= dt;  // dust particles fade out over time (life counts down from 0.4 to 0.0)
                 if (dustPool[i].life <= 0.0f) { dustPool[i].active = false; continue; }
                 dustPool[i].x += dustPool[i].vx * dt;
-                dustPool[i].y += dustPool[i].vy * dt;
-                dustPool[i].vy -= 300.0f * dt;
+                dustPool[i].y += dustPool[i].vy * dt; 
+                dustPool[i].vy -= 300.0f * dt; // makes dust float up then fall down (gravity)
             }
 
-            // --- Pickup sparkles (Collected one-shot, 6 frames then slot frees) ---
+            // --- Fruits Pickup sparkles ---
+            // t increases every frame (dt) and after 6 frames popups[i].active = false to free slot.
             for (int i = 0; i < MAX_PICKUP_FX; i++) {
                 if (!pickupFx[i].active) continue;
                 pickupFx[i].t += dt;
+                // t = 0 -> frame 0
+                // t = 0.04 -> frame 1
+                // t = 0.28 -> frame 5
+                // t = 0.3 -> frame 6 (end of animation, free slot)
                 if (pickupFx[i].t >= (float)PICKUP_FRAMES / PICKUP_FPS) pickupFx[i].active = false;
-            }
+            } // PICKUP_FRAMES / PICKUP_FPS = 6 / 18 = 0.33333
 
             // --- Score popups (+50 / -25) float up and fade (pool in utils.c) ---
             // t = 0, popup floats upward.
@@ -322,18 +327,23 @@ void game_update(void) {
             // while popups[i].active is still active, it is being printed out in-game for 0.9 seconds (line 401 & 434)
             for (int i = 0; i < MAX_POPUPS; i++) {
                 if (!popups[i].active) continue;
-                popups[i].t += dt;
-                popups[i].y -= 46.0f * dt;
+                popups[i].t += dt; // t = 0 -> popup just spawned, t = 0.9 -> popup disappears
+                popups[i].y -= 46.0f * dt; // popup floats up at 46px/sec
                 if (popups[i].t >= 0.9f) popups[i].active = false;
             }
 
             // --- Camera follows player, clamped + pixel-snapped ---
-            camX = player.x + PLAYER_HB_W * 0.5f - SCREEN_WIDTH * 0.5f;
-            camY = player.y + PLAYER_HB_H * 0.5f - SCREEN_HEIGHT * 0.5f;
+            // player.x = player's hitbox top-left x position in world pixels
+            // PLAYER_HB_W * 0.5f = half of player's hitbox width (center x offset)
+            // player center = player.x + PLAYER_HB_W * 0.5f
+            camX = player.x + PLAYER_HB_W * 0.5f - SCREEN_WIDTH * 0.5f; // cetner x of player 
+            camY = player.y + PLAYER_HB_H * 0.5f - SCREEN_HEIGHT * 0.5f; // center y of player
             float worldW = (float)(mapWidth * (int)TILE_SIZE);
             float worldH = (float)(mapHeight * (int)TILE_SIZE);
+            // prevent camera from going outside the world boundaries (left/top)
             if (camX < 0.0f) camX = 0.0f;
             if (camY < 0.0f) camY = 0.0f;
+            // Clamp camera to the world boundaries (prevent camera from going outside the world)
             if (camX > worldW - SCREEN_WIDTH) camX = worldW - SCREEN_WIDTH;
             if (camY > worldH - SCREEN_HEIGHT) camY = worldH - SCREEN_HEIGHT;
             camX = roundf(camX);
@@ -389,8 +399,8 @@ void game_update(void) {
         // Dust (fade out) image played whenever player runs or jump on top of enemies.
         for (int i = 0; i < MAX_DUST; i++) {
             if (!dustPool[i].active || !dustImg) continue;
-            float k = dustPool[i].life / dustPool[i].maxLife;
-            int alpha = (int)(220.0f * k);
+            float k = dustPool[i].life / dustPool[i].maxLife; // life ratio (1.0 = full life, 0.0 = no more dust)
+            int alpha = (int)(220.0f * k); // fade out dust as it dies
             float s = dustPool[i].size * (1.2f - 0.4f * k);
             float u = (float)CP_Image_GetWidth(dustImg);
             float v = (float)CP_Image_GetHeight(dustImg);
@@ -401,6 +411,11 @@ void game_update(void) {
         if (collectedImg) {
             for (int i = 0; i < MAX_PICKUP_FX; i++) {
                 if (!pickupFx[i].active) continue;
+                // PICKUP_FPS = 18.0f, PICKUP_FRAMES = 6, so frame = t * 18.0f
+                // Each frame is 1/18th of a second, so 6 frames = 6/18 = 1/3 second
+                // t = 0.0 -> frame 0
+                // t = 0.04 -> frame 1
+                // t = 0.28 -> frame 5  (final frame, then pickupFx[i].active = false)
                 int frame = (int)(pickupFx[i].t * PICKUP_FPS);
                 if (frame > PICKUP_FRAMES - 1) frame = PICKUP_FRAMES - 1;
                 float sx = roundf(pickupFx[i].x - TILE_SIZE * 0.5f - camX);
@@ -414,19 +429,25 @@ void game_update(void) {
         // HUD: score + hearts row (top-left)
         if (gameFont) CP_Font_Set(gameFont);
         CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_LEFT, CP_TEXT_ALIGN_V_MIDDLE);
-        CP_Settings_Fill(CP_Color_Create(245, 235, 210, 255));
+        CP_Settings_Fill(CP_Color_Create(245, 235, 210, 255)); // light cream (off-white) for text
         CP_Settings_TextSize(30.0f);
         {
             // High score on the left, above the current score
             char scoreText[32];
             char highText[32];
+            // snprintf(destination buffer, max size, "format %d", integer replacing %d);
             snprintf(highText, sizeof(highText), "HIGH SCORE %d", highScore);
             CP_Font_DrawText(highText, 16.0f, 78.0f);
             snprintf(scoreText, sizeof(scoreText), "CURRENT SCORE  %d", score);
             CP_Font_DrawText(scoreText, 16.0f, 110.0f);
         }
         if (heartImg) {
-            for (int i = 0; i < maxHearts; i++)
+            for (int i = 0; i < maxHearts; i++) // maxHeart = 5 (defined in utils.h)
+            // draw_sheet_frame(image, frameWidth, frameHeight, frameIndex, x, y, width, height, scale, alpha)
+            // Draw full heart if i < hearts (0), else draw empty heart (1)
+            // i = 0 → full
+            // i = 1 → full
+            // i = 2 → empty ( if hearts = 2 which player decreased health from player.c (hurt_player()))
                 draw_sheet_frame(heartImg, 16, 16, (i < hearts) ? 0 : 1, 16.0f + (float)i * 48.0f, 14.0f, 48.0f, 48.0f, 1, 255);
         }
 
@@ -440,12 +461,14 @@ void game_update(void) {
             // t = 0.9  -> alpha = 0, invisible and deactivated
             int alpha = (int)(255.0f * (1.0f - popups[i].t / 0.9f));
             if (alpha < 0) alpha = 0;
+            // neg = true (amount < 0) → red, else yellow (amount > 0)
             bool neg = popups[i].amount < 0;
-            CP_Settings_Fill(neg ? CP_Color_Create(230, 70, 60, alpha) // coral red / vermilion red
-                                 : CP_Color_Create(255, 225, 120, alpha)); // warm golden yellow
+            CP_Settings_Fill(neg ? CP_Color_Create(230, 70, 60, alpha) // red
+                                 : CP_Color_Create(255, 225, 120, alpha)); // yellow
             CP_Settings_TextSize(26.0f);
             char buf[16];
             snprintf(buf, sizeof(buf), "%+d", popups[i].amount);
+            // as screen moves, popups[i].x/y are in world space, so subtract camX/Y to convert to screen space (so it would appear in correct position on screen)
             CP_Font_DrawText(buf, popups[i].x - camX, popups[i].y - camY);
         }
 
@@ -453,7 +476,7 @@ void game_update(void) {
         camX = savedCamX;
         camY = savedCamY;
 
-        quiz_draw_toast();  // checkpoint-quiz status banner (top-center, ~3s)
+        quiz_draw_toast();  // checkpoint-quiz status banner (top-center, ~3s) (quiz.c)
 
         // Level complete overlay (End object reached)
         if (levelComplete) {
@@ -488,15 +511,17 @@ void game_update(void) {
             }
         }
 
-        if (!paused && !quiz_is_active()) {
+        if (!paused && !quiz_is_active()) { // if paused or quiz overlay is not active
                 // Restart button (top-right): click = fresh run from the beginning
                 if (restartBtnImage) {
                     float rx = SCREEN_WIDTH - 64.0f;
                     float ry = 16.0f;
                     float rsize = 48.0f;
                     bool hover = is_mouse_over(rx, ry, rsize, rsize);
+                    // normal size = 48x48, hover size = 54x54 (enlarged by 6 pixels)
                     float rs = hover ? rsize + 6.0f : rsize;
-                    float ro = (rs - rsize) * 0.5f;
+                    float ro = (rs - rsize) * 0.5f; // keep button centered when it grows on hover
+                    // Subtracting ro moves the enlarged image 3 pixels left and 3 pixels up, making it appear centered on the original position after it is enlarged.
                     CP_Image_Draw(restartBtnImage, rx - ro, ry - ro, rs, rs, 255);
                     if (hover && CP_Input_MouseClicked()) { play_click(); restart_from_beginning(); }
                 }
@@ -507,8 +532,10 @@ void game_update(void) {
                 float sy = 16.0f;
                 float ssize = 48.0f;
                 bool hover = is_mouse_over(sx, sy, ssize, ssize);
+                // normal size = 48x48, hover size = 54x54 (enlarged by 6 pixels)
                 float ss = hover ? ssize + 6.0f : ssize;
-                float so = (ss - ssize) * 0.5f;
+                float so = (ss - ssize) * 0.5f; // keep button centered when it grows on hover
+                // Subtracting so moves the enlarged image 3 pixels left and 3 pixels up, making it appear centered on the original position after it is enlarged
                 CP_Image_Draw(settingsBtnImage, sx - so, sy - so, ss, ss, 255);
                 if (hover && CP_Input_MouseClicked()) {
                     paused = true; pausePage = 0;
@@ -517,8 +544,10 @@ void game_update(void) {
                 }
             }
         }
-        else {
+        else { // if paused or quiz overlay is active, draw the pause menu (or quiz overlay) on top of the game world
+            // Pause menu (pause.c) draws the cream panel, buttons, and handles input.
             draw_pause_menu();
+            // Check if user click on the pause menu buttons (resume, options, quit) 
             handle_pause_input();
         }
 
