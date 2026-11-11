@@ -291,7 +291,7 @@ static void draw_menu_ui(void) {
         // player can see the active skin before opening the picker.
         {
             bool skinHover = is_mouse_over(skinX, row2Y, btnSize, btnSize);
-            skin_draw_preview(skinIndex, skinX, row2Y, btnSize, 0);
+            skin_draw_preview(skinIndex, skinX, row2Y, btnSize);
             if (skinHover) {
                 CP_Settings_NoFill();
                 CP_Settings_Stroke(CP_Color_Create(215, 140, 40, 255));

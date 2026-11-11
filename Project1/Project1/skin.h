@@ -14,8 +14,8 @@
 #define SKIN_DEFAULT 0  // Virtual Guy = blue astronaut
 
 typedef struct {
-    const char* name;    // shown in the picker
-    const char* folder;  // folder under Assets/Main Characters/
+    const char *name;    // shown in the picker
+    const char *folder;  // folder under Assets/Main Characters/
 } SkinDef;
 
 extern int skinIndex;  // 0..SKIN_COUNT-1
@@ -29,7 +29,7 @@ void skin_free_assets(void);
 CP_Image skin_preview_idle(int index);
 
 // Draw one idle frame (32x32 cell) of a skin at x,y scaled to `size`.
-void skin_draw_preview(int index, float x, float y, float size, int frame);
+void skin_draw_preview(int index, float x, float y, float size);
 
 // Shared "Choose your skin" overlay (dim + cream panel + 4 cards + BACK).
 // Both the main menu and the pause menu call these; the caller owns the
