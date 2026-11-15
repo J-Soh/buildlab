@@ -128,7 +128,7 @@ void skin_picker_draw(void) {
 
         // Card body: selected one is warmer; hover adds a soft orange wash.
         CP_Settings_RectMode(CP_POSITION_CORNER);
-        CP_Settings_Fill(selected ? CP_Color_Create(252, 236, 205, 255) : CP_Color_Create(236, 222, 202, 255)); //
+        CP_Settings_Fill(selected ? CP_Color_Create(252, 236, 205, 255) : CP_Color_Create(236, 222, 202, 255));
         CP_Graphics_DrawRect(x, y, PICKER_CARD_W, PICKER_CARD_H);
         if (hover) {
             CP_Settings_Fill(CP_Color_Create(215, 140, 40, 70));
@@ -142,6 +142,7 @@ void skin_picker_draw(void) {
         CP_Graphics_DrawRect(x, y, PICKER_CARD_W, PICKER_CARD_H);
         CP_Settings_NoStroke();
 
+        //to draw the sprite
         skin_draw_preview(i, x + (PICKER_CARD_W - 96.0f) * 0.5f, y + 14.0f, 96.0f);
 
         CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
