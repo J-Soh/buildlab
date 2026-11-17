@@ -73,17 +73,17 @@ void skin_draw_preview(int index, float x, float y, float size) {
 }
 
 // Shared geometry helpers so the draw and input passes always agree.
-static void picker_panel(float* cx, float* cy, float* top) {
+static void picker_panel(float *cx, float *cy, float *top) {
     *cx = SCREEN_WIDTH * 0.5f;
     *cy = SCREEN_HEIGHT * 0.5f;
     *top = *cy - PICKER_PANEL_H * 0.5f;
 }
 
-static void picker_card(int i, float* x, float* y) {
+static void picker_card(int i, float *x, float *y) {
     float cx, cy, top;
 	// picker_panel returns the center of the panel and the top edge, so we can position the cards relative to that.
     picker_panel(&cx, &cy, &top); 
-	// total width of all cards + gaps, so we can center the first card and space the rest evenly
+	// total width of all cards + gaps
     float total = (float)SKIN_COUNT * PICKER_CARD_W + (float)(SKIN_COUNT - 1) * PICKER_CARD_GAP;
 	// start x position of the first card, so we can space the rest evenly
     float start = cx - total * 0.5f;
@@ -93,7 +93,7 @@ static void picker_card(int i, float* x, float* y) {
     *y = top + 130.0f;
 }
 
-static void picker_back(float* x, float* y) {
+static void picker_back(float *x, float *y) {
     float cx, cy, top;
     picker_panel(&cx, &cy, &top);
     *x = cx - PICKER_BACK_W * 0.5f;
@@ -105,7 +105,6 @@ void skin_picker_draw(void) {
     picker_panel(&cx, &cy, &top);
 
     // Dim whatever is behind (menu background or the frozen game world).
-    CP_Settings_RectMode(CP_POSITION_CORNER);
     CP_Settings_Fill(CP_Color_Create(0, 0, 0, 150));
     CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
     
@@ -113,9 +112,8 @@ void skin_picker_draw(void) {
     draw_cream_panel(cx, cy, PICKER_PANEL_W, PICKER_PANEL_H);
 
     if (gameFont) CP_Font_Set(gameFont);
-    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
-    CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255)); // Somewhat red
+    CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(50.0f);
     CP_Font_DrawText("CHOOSE YOUR SKIN", cx, top + 58.0f);
 
@@ -133,6 +131,7 @@ void skin_picker_draw(void) {
         if (hover) {
             CP_Settings_Fill(CP_Color_Create(215, 140, 40, 70));
             CP_Graphics_DrawRect(x, y, PICKER_CARD_W, PICKER_CARD_H);
+
         }
 
         // Card border: thick red when selected, thin gold otherwise.
@@ -183,7 +182,8 @@ void skin_picker_draw(void) {
 // Returns true when BACK was clicked (the caller closes the picker). Picking a
 // card only updates skinIndex; it stays open so the new portrait is visible.
 bool skin_picker_handle_input(void) {
-    if (!CP_Input_MouseClicked()) return false;
+    if (!CP_Input_MouseClicked()) 
+        return false;
 
 	// BACK button: if clicked, close the picker and return true to the caller.
     float bx, by; 

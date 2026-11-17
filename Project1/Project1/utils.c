@@ -22,8 +22,8 @@ CP_Font gameFont = NULL;
 
 // --- Shared audio ---
 int musicMode = 0;             // 0 none, 1 menu, 2 world
-float musicVol = 1.0f;
-float sfxVol = 0.7f;
+float musicVol = 0.0f;
+float sfxVol = 0.0f;
 bool muted = false;  // menu volume-button toggle; overrides both groups
 CP_Sound menuMusic = NULL, clickSnd = NULL, windowOpenSnd = NULL;
 

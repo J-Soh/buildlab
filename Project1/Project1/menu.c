@@ -27,6 +27,7 @@ static bool showCredits = false; // Toggle to view credits page (info from credi
 static bool showSkins = false;   // Toggle to view the character skin picker
 static bool showQuitConfirm = false; // Quit popup on the main menu (ESC -> "Are you sure...?")
 
+
 // Forward declarations (defined below menu_update)
 static void draw_menu_ui(void);
 static void handle_menu_input(void);
