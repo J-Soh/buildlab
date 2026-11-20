@@ -46,7 +46,7 @@ void draw_cream_panel(float cx, float cy, float w, float h);
 // Enemy behavior now owned by entity.h/entity.c. Collision glue that stays
 // generic (aabb, tile solidity, FX pools) remains here.
 // -----------------------------------------------------------------------------
-#define MAX_HEARTS 5
+#define MAX_HEARTS 2
 extern int hearts;              // HUD hearts left (maxHearts on reset)
 extern int maxHearts;           // heart cap (5; buff Fortitude raises it)
 extern bool levelComplete;      // End gate reached

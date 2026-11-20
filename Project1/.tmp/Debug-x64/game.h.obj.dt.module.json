@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "C:\\Workflow\\Repo\\buildlab\\Project1\\.tmp\\Debug-x64\\game.obj",
+            "outputs": [
+                "C:\\Workflow\\Repo\\buildlab\\Project1\\.tmp\\Debug-x64\\game.h.obj.dt.module.json",
+                "C:\\Workflow\\Repo\\buildlab\\Project1\\.tmp\\Debug-x64\\game.h.obj.dt.d.json"
+            ],
+            "requires": []
+        }
+    ]
+}

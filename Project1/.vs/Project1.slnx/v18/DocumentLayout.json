@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "C:\\Workflow\\Repo\\buildlab\\Project1\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\entity.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\entity.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|solutionrelative:Project1\\quiz.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{E7D12A57-8767-4B26-A73E-7FCCE844A586}|Project1\\Project1.vcxproj|C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\game.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -37,8 +37,8 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedHeight": 190,
-          "SelectedChildIndex": 4,
+          "DockedHeight": 150,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -51,14 +51,28 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "quiz.c",
+              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c",
+              "RelativeDocumentMoniker": "Project1\\quiz.c",
+              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c",
+              "RelativeToolTip": "Project1\\quiz.c",
+              "ViewState": "AgIAABQAAAAAAAAAAAAYwCQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2026-10-20T06:18:48.035Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
               "Title": "entity.c",
               "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\entity.c",
               "RelativeDocumentMoniker": "Project1\\entity.c",
               "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\entity.c",
               "RelativeToolTip": "Project1\\entity.c",
-              "ViewState": "AgIAADYAAAAAAAAAAAAYwD0AAAAmAAAAAAAAAA==",
+              "ViewState": "AgIAADYAAAAAAAAAAAAYwEgAAAAyAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-11-02T03:43:54.487Z"
+              "WhenOpened": "2026-11-02T03:43:54.487Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -71,19 +85,6 @@
               "ViewState": "AgIAAGUBAAAAAAAAAAAowHkBAAAbAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
               "WhenOpened": "2026-11-02T03:33:17.181Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "quiz.c",
-              "DocumentMoniker": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c",
-              "RelativeDocumentMoniker": "Project1\\quiz.c",
-              "ToolTip": "C:\\Workflow\\Repo\\buildlab\\Project1\\Project1\\quiz.c",
-              "RelativeToolTip": "Project1\\quiz.c",
-              "ViewState": "AgIAABQAAAAAAAAAAAAYwCEAAAAkAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
-              "WhenOpened": "2026-10-20T06:18:48.035Z",
-              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -136,7 +137,7 @@
           ]
         },
         {
-          "DockedHeight": 29,
+          "DockedHeight": 69,
           "SelectedChildIndex": -1,
           "Children": [
             {

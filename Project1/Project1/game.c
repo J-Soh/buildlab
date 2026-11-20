@@ -544,7 +544,7 @@ void game_update(void) {
                 }
             }
         }
-        else { // if paused or quiz overlay is active, draw the pause menu (or quiz overlay) on top of the game world
+        else if (paused) {
             // Pause menu (pause.c) draws the cream panel, buttons, and handles input.
             draw_pause_menu();
             // Check if user click on the pause menu buttons (resume, options, quit) 
