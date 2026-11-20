@@ -69,6 +69,167 @@ static float startX = -1.0f, startY = -1.0f;      // player CENTER, world px (le
 static CP_Image collectedImg = NULL;
 // (pickup FX pool + spawner now owned by utils.c; game.c sims/draws the sparkle)
 
+#define DEBUG_SNAPSHOT_MAX 180
+typedef struct {
+    Player player;
+    Entity entities[MAX_ENTITIES];
+    int entityCount;
+    float camX, camY;
+    int hearts, score, combo, checkpointScore;
+    float respawnX, respawnY;
+    bool levelComplete;
+} DebugSnapshot;
+
+static bool debugMode = false;
+static bool debugPaused = false;
+static bool debugStepRequested = false;
+static DebugSnapshot debugSnapshots[DEBUG_SNAPSHOT_MAX];
+static int debugSnapshotCount = 0;
+static int debugSnapshotStart = 0;
+static int debugSnapshotRewind = -1;
+
+static void debug_capture_snapshot(void) {
+    int slot;
+    if (debugSnapshotCount < DEBUG_SNAPSHOT_MAX) {
+        slot = debugSnapshotCount;
+    } else {
+        slot = debugSnapshotStart;
+        debugSnapshotStart = (debugSnapshotStart + 1) % DEBUG_SNAPSHOT_MAX;
+    }
+
+    DebugSnapshot* snapshot = &debugSnapshots[slot];
+    snapshot->player = player;
+    snapshot->entityCount = entityCount;
+    if (entityCount > 0) {
+        memcpy(snapshot->entities, entityPool, (size_t)entityCount * sizeof(Entity));
+    }
+    snapshot->camX = camX;
+    snapshot->camY = camY;
+    snapshot->hearts = hearts;
+    snapshot->score = score;
+    snapshot->combo = combo;
+    snapshot->checkpointScore = checkpointScore;
+    snapshot->respawnX = respawnX;
+    snapshot->respawnY = respawnY;
+    snapshot->levelComplete = levelComplete;
+
+    if (debugSnapshotCount < DEBUG_SNAPSHOT_MAX) {
+        debugSnapshotCount++;
+    }
+    debugSnapshotRewind = debugSnapshotCount - 1;
+}
+
+static void debug_rewind_snapshot(void) {
+    if (debugSnapshotCount == 0) return;
+    if (debugSnapshotRewind > 0) debugSnapshotRewind--;
+
+    int slot = (debugSnapshotStart + debugSnapshotRewind) % DEBUG_SNAPSHOT_MAX;
+    DebugSnapshot* snapshot = &debugSnapshots[slot];
+    player = snapshot->player;
+    entityCount = snapshot->entityCount;
+    if (entityCount > 0) {
+        memcpy(entityPool, snapshot->entities, (size_t)entityCount * sizeof(Entity));
+    }
+    camX = snapshot->camX;
+    camY = snapshot->camY;
+    hearts = snapshot->hearts;
+    score = snapshot->score;
+    combo = snapshot->combo;
+    checkpointScore = snapshot->checkpointScore;
+    respawnX = snapshot->respawnX;
+    respawnY = snapshot->respawnY;
+    levelComplete = snapshot->levelComplete;
+}
+
+static void handle_debug_input(void) {
+    if (CP_Input_KeyTriggered(KEY_F1)) {
+        debugMode = !debugMode;
+        if (debugMode) debugPaused = false;
+        if (debugMode) debugSnapshotCount = 0;
+        if (debugMode) debugSnapshotStart = 0;
+        if (debugMode) debugSnapshotRewind = -1;
+    }
+    if (!debugMode) return;
+    if (CP_Input_KeyTriggered(KEY_F2)) {
+        debugPaused = !debugPaused;
+        debugStepRequested = false;
+    }
+    if (CP_Input_KeyTriggered(KEY_F3) && debugPaused) {
+        debugStepRequested = true;
+    }
+    if (CP_Input_KeyTriggered(KEY_F4) && debugPaused) {
+        debug_rewind_snapshot();
+    }
+}
+
+static void draw_debug_hitboxes(void) {
+    if (!debugMode) return;
+
+    CP_Settings_RectMode(CP_POSITION_CORNER);
+    CP_Settings_NoFill();
+    CP_Settings_StrokeWeight(3.0f);
+
+    CP_Settings_Stroke(CP_Color_Create(80, 220, 255, 255));
+    CP_Graphics_DrawRect(player.x - camX, player.y - camY,
+                         PLAYER_HB_W, PLAYER_HB_H);
+
+    for (int i = 0; i < entityCount; i++) {
+        Entity* e = &entityPool[i];
+        if (!e->active) continue;
+        const EntityDef* def = &ENTITY_DEFS[e->kind];
+        float hx = e->x - e->w * 0.5f - camX;
+        float hy = e->y - e->h * 0.5f - camY;
+        if (def->hazard) {
+            CP_Settings_Stroke(CP_Color_Create(255, 80, 80, 255));
+        } else if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO) {
+            CP_Settings_Stroke(CP_Color_Create(255, 220, 80, 255));
+        } else if (e->kind >= ENT_FRUIT_ORANGE && e->kind <= ENT_FRUIT_STRAWBERRY) {
+            CP_Settings_Stroke(CP_Color_Create(80, 255, 140, 255));
+        } else {
+            CP_Settings_Stroke(CP_Color_Create(210, 210, 210, 255));
+        }
+        CP_Graphics_DrawRect(hx, hy, e->w, e->h);
+    }
+    CP_Settings_NoStroke();
+}
+
+static void draw_debug_inspector(float dt) {
+    if (!debugMode) return;
+
+    float panelW = 430.0f;
+    float panelH = 286.0f;
+    float cx = SCREEN_WIDTH - panelW * 0.5f - 16.0f;
+    float cy = 170.0f;
+    draw_cream_panel(cx, cy, panelW, panelH);
+
+    if (gameFont) CP_Font_Set(gameFont);
+    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_LEFT, CP_TEXT_ALIGN_V_MIDDLE);
+    CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
+    CP_Settings_TextSize(24.0f);
+    CP_Font_DrawText("DEBUG MODE", cx - panelW * 0.5f + 28.0f, cy - panelH * 0.5f + 34.0f);
+
+    CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
+    CP_Settings_TextSize(18.0f);
+    float y = cy - panelH * 0.5f + 76.0f;
+    char text[128];
+    snprintf(text, sizeof(text), "DT %.4f  FPS %.0f", dt, dt > 0.0f ? 1.0f / dt : 0.0f);
+    CP_Font_DrawText(text, cx - panelW * 0.5f + 28.0f, y);
+    snprintf(text, sizeof(text), "Player x %.1f y %.1f vx %.1f vy %.1f", player.x, player.y, player.vx, player.vy);
+    CP_Font_DrawText(text, cx - panelW * 0.5f + 28.0f, y += 34.0f);
+    snprintf(text, sizeof(text), "Grounded %d  Jumps %d  Invuln %.2f",
+             player.grounded ? 1 : 0, player.jumps, player.invulnT);
+    CP_Font_DrawText(text, cx - panelW * 0.5f + 28.0f, y += 34.0f);
+    snprintf(text, sizeof(text), "Camera %.1f, %.1f  Hearts %d/%d",
+             camX, camY, hearts, maxHearts);
+    CP_Font_DrawText(text, cx - panelW * 0.5f + 28.0f, y += 34.0f);
+    snprintf(text, sizeof(text), "Score %d  Combo %d  Snapshots %d",
+             score, combo, debugSnapshotCount);
+    CP_Font_DrawText(text, cx - panelW * 0.5f + 28.0f, y += 34.0f);
+    snprintf(text, sizeof(text), "F1 HUD  F2 %s  F3 Step  F4 Rewind",
+             debugPaused ? "Resume" : "Pause");
+    CP_Font_DrawText(text, cx - panelW * 0.5f + 28.0f, y += 34.0f);
+}
+
 static bool instructionsOpen = false;
 
 static void handle_instructions_input(void) {
@@ -330,6 +491,12 @@ void game_init(void) {
 
     restart_from_beginning();  // fresh run on every entry (Game_Init runs per entry now)
     instructionsOpen = true;
+    debugMode = false;
+    debugPaused = false;
+    debugStepRequested = false;
+    debugSnapshotCount = 0;
+    debugSnapshotStart = 0;
+    debugSnapshotRewind = -1;
 }
 
 // Pause menu (pause_row_y, draw_pause_menu, handle_pause_input) now owned by
@@ -345,6 +512,8 @@ void game_update(void) {
     {
         float dt = CP_System_GetDt();
         if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // prevents background tearing
+
+        handle_debug_input();
 
         if (instructionsOpen) {
             handle_instructions_input();
@@ -362,7 +531,8 @@ void game_update(void) {
             else paused = false;
         }
 
-        if (!instructionsOpen && !paused && !quiz_is_active()) {
+        if (!instructionsOpen && !paused && !quiz_is_active() &&
+            (!debugPaused || debugStepRequested)) {
             bgScroll += BG_SCROLL_SPEED * dt; // background scrolls while the world is active (paused freezes it)
             if (musicMode != 2 && worldMusic) {
                 CP_Sound_StopGroup(CP_SOUND_GROUP_MUSIC);
@@ -448,6 +618,12 @@ void game_update(void) {
             check_player_entity_collisions();
             }
             }
+            if (debugMode) {
+                debug_capture_snapshot();
+            }
+            if (debugStepRequested) {
+                debugStepRequested = false;
+            }
         } // end of world update (skipped while paused)
 
         // Quiz overlays keep ticking while the world is frozen (quiz freezes the sim)
@@ -472,6 +648,7 @@ void game_update(void) {
         CP_Settings_ImageMode(CP_POSITION_CORNER);
 
         render_player();  // shadow + animation select + draw (player.c)
+        draw_debug_hitboxes();
 
         // Dust (fade out) image played whenever player runs or jump on top of enemies.
         for (int i = 0; i < MAX_DUST; i++) {
@@ -633,6 +810,7 @@ void game_update(void) {
 
         quiz_draw_overlay();  // quiz/buff panels sit above HUD + pause
         draw_instructions_overlay();
+        draw_debug_inspector(dt);
     }
 }
 
