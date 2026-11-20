@@ -69,6 +69,78 @@ static float startX = -1.0f, startY = -1.0f;      // player CENTER, world px (le
 static CP_Image collectedImg = NULL;
 // (pickup FX pool + spawner now owned by utils.c; game.c sims/draws the sparkle)
 
+static bool instructionsOpen = false;
+
+static void handle_instructions_input(void) {
+    if (!instructionsOpen) return;
+
+    float cx = SCREEN_WIDTH * 0.5f;
+    float cy = SCREEN_HEIGHT * 0.5f;
+    float panelW = SCREEN_WIDTH < 1200.0f ? SCREEN_WIDTH - 80.0f : 1120.0f;
+    float panelH = SCREEN_HEIGHT < 760.0f ? SCREEN_HEIGHT - 60.0f : 720.0f;
+    float buttonW = 280.0f;
+    float buttonH = 64.0f;
+    float buttonX = cx - buttonW * 0.5f;
+    float buttonY = cy + panelH * 0.5f - 96.0f;
+
+    if (CP_Input_KeyTriggered(KEY_ENTER) ||
+        (CP_Input_MouseClicked() &&
+         is_mouse_over(buttonX, buttonY, buttonW, buttonH))) {
+        instructionsOpen = false;
+        play_click();
+    }
+}
+
+static void draw_instructions_overlay(void) {
+    if (!instructionsOpen) return;
+
+    float cx = SCREEN_WIDTH * 0.5f;
+    float cy = SCREEN_HEIGHT * 0.5f;
+    float panelW = SCREEN_WIDTH < 1200.0f ? SCREEN_WIDTH - 80.0f : 1120.0f;
+    float panelH = SCREEN_HEIGHT < 760.0f ? SCREEN_HEIGHT - 60.0f : 720.0f;
+
+    CP_Settings_RectMode(CP_POSITION_CORNER);
+    CP_Settings_Fill(CP_Color_Create(0, 0, 0, 170));
+    CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
+    draw_cream_panel(cx, cy, panelW, panelH);
+
+    if (gameFont) CP_Font_Set(gameFont);
+    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+    CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
+    CP_Settings_TextSize(44.0f);
+    CP_Font_DrawText("HOW TO PLAY", cx, cy - panelH * 0.5f + 58.0f);
+
+    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_LEFT, CP_TEXT_ALIGN_V_MIDDLE);
+    CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
+    CP_Settings_TextSize(25.0f);
+
+    float left = cx - panelW * 0.5f + 75.0f;
+    float y = cy - panelH * 0.5f + 130.0f;
+    float lineGap = panelH > 680.0f ? 68.0f : 56.0f;
+
+    CP_Font_DrawText("A / D - Move left and right", left, y);
+    CP_Font_DrawText("SPACE to Jump. Double-tap for double jump. Hold SPACE for higer Jump", left, y += lineGap);
+    CP_Font_DrawText("Rinos and Chickens are enemies", left, y += lineGap);
+    CP_Font_DrawText("Jump on top of enemies to defeat them", left, y += lineGap);
+    CP_Font_DrawText("Fruits give 50 points, and Defeating enemies gives 100 points", left, y += lineGap);
+    CP_Font_DrawText("Checkpoints trigger quizzes; correct answers give a buff", left, y += lineGap);
+    CP_Font_DrawText("Death returns you to the latest checkpoint and can grant another buff", left, y += lineGap);
+
+    float buttonW = 280.0f;
+    float buttonH = 64.0f;
+    float buttonX = cx - buttonW * 0.5f;
+    float buttonY = cy + panelH * 0.5f - 96.0f;
+    bool hover = is_mouse_over(buttonX, buttonY, buttonW, buttonH);
+
+    CP_Settings_RectMode(CP_POSITION_CORNER);
+    CP_Settings_Fill(hover ? CP_Color_Create(215, 140, 40, 90) : CP_Color_Create(40, 40, 40, 20));
+    CP_Graphics_DrawRect(buttonX, buttonY, buttonW, buttonH);
+    CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
+    CP_Settings_TextSize(30.0f);
+    CP_Font_DrawText("LET'S PLAY", cx, buttonY + buttonH * 0.5f);
+}
+
 // Leftmost lowest open pocket with headroom + floor: adapts to map edits
 static void find_spawn_cell(int* outTx, int* outTy) {
     if (!mapData || mapWidth <= 0 || mapHeight <= 0) { *outTx = 0; *outTy = 0; return; }
@@ -257,6 +329,7 @@ void game_init(void) {
     apply_volumes(); // utils.c
 
     restart_from_beginning();  // fresh run on every entry (Game_Init runs per entry now)
+    instructionsOpen = true;
 }
 
 // Pause menu (pause_row_y, draw_pause_menu, handle_pause_input) now owned by
@@ -273,9 +346,13 @@ void game_update(void) {
         float dt = CP_System_GetDt();
         if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // prevents background tearing
 
+        if (instructionsOpen) {
+            handle_instructions_input();
+        }
+
         // ESC ("exit" key): when a quiz overlay is open it owns input; else
         // cancel confirm popup, open pause menu, step back a page, or resume
-        if (CP_Input_KeyTriggered(KEY_ESCAPE) && !quiz_is_active() && !levelComplete) {
+        if (!instructionsOpen && CP_Input_KeyTriggered(KEY_ESCAPE) && !quiz_is_active() && !levelComplete) {
             if (pause_confirm_open()) pause_cancel_confirm();  // ESC closes popup, stays paused
             else if (!paused) {
                 paused = true; pausePage = 0;
@@ -285,7 +362,7 @@ void game_update(void) {
             else paused = false;
         }
 
-        if (!paused && !quiz_is_active()) {
+        if (!instructionsOpen && !paused && !quiz_is_active()) {
             bgScroll += BG_SCROLL_SPEED * dt; // background scrolls while the world is active (paused freezes it)
             if (musicMode != 2 && worldMusic) {
                 CP_Sound_StopGroup(CP_SOUND_GROUP_MUSIC);
@@ -511,7 +588,10 @@ void game_update(void) {
             }
         }
 
-        if (!paused && !quiz_is_active()) { // if paused or quiz overlay is not active
+        if (instructionsOpen) {
+            // Instructions freeze the new run until the player dismisses the card.
+        }
+        else if (!paused && !quiz_is_active()) { // if paused or quiz overlay is not active
                 // Restart button (top-right): click = fresh run from the beginning
                 if (restartBtnImage) {
                     float rx = SCREEN_WIDTH - 64.0f;
@@ -552,6 +632,7 @@ void game_update(void) {
         }
 
         quiz_draw_overlay();  // quiz/buff panels sit above HUD + pause
+        draw_instructions_overlay();
     }
 }
 

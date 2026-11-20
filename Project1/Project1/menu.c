@@ -378,7 +378,8 @@ static void handle_menu_input(void) {
         if (CP_Input_KeyTriggered(KEY_N)) { showQuitConfirm = false; return; }
     }
 
-    if (CP_Input_KeyTriggered(KEY_SPACE) && !showQuitConfirm) {
+    if (CP_Input_KeyTriggered(KEY_SPACE) &&
+        !showQuitConfirm && !showSettings && !showCredits && !showSkins) {
         CP_Engine_SetNextGameState(game_init, game_update, game_exit);  // PLAY: enter game
     }
 
