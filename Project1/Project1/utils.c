@@ -19,6 +19,7 @@ float screenW = 1600.0f, screenH = 900.0f;
 float bgScroll = 0.0f;
 CP_Image bgImage = NULL;
 CP_Font gameFont = NULL;
+CP_Image transitionImage = NULL;
 
 // --- Shared audio ---
 int musicMode = 0;             // 0 none, 1 menu, 2 world

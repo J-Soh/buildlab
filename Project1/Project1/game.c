@@ -232,6 +232,62 @@ static void draw_debug_inspector(float dt) {
 
 static bool instructionsOpen = false;
 
+#define SCREEN_TRANSITION_DURATION 0.36f
+static int screenTransitionPhase = 0; // 0 idle, 1 fade in, 2 fade out
+static float screenTransitionT = 0.0f;
+
+void request_menu_transition(void) {
+    if (screenTransitionPhase == 2) return;
+    screenTransitionT = 0.0f;
+    screenTransitionPhase = 2;
+}
+
+static void update_screen_transition(float dt) {
+    if (screenTransitionPhase == 0) return;
+    screenTransitionT += dt;
+    if (screenTransitionT >= SCREEN_TRANSITION_DURATION) {
+        if (screenTransitionPhase == 2) {
+            CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);
+            paused = false;
+            levelComplete = false;
+            return;
+        }
+        screenTransitionPhase = 0;
+        screenTransitionT = 0.0f;
+    }
+}
+
+static void draw_screen_transition(void) {
+    if (screenTransitionPhase == 0) return;
+
+    float progress = screenTransitionT / SCREEN_TRANSITION_DURATION;
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+
+    if (!transitionImage) return;
+    CP_Settings_ImageMode(CP_POSITION_CORNER);
+    float cx = SCREEN_WIDTH * 0.5f;
+    float cy = SCREEN_HEIGHT * 0.5f;
+    float coverSize = 2.0f * sqrtf(cx * cx + cy * cy);
+    float startSize = 44.0f;
+
+    float size;
+    if (screenTransitionPhase == 1) {
+        // New screen fade-in: blue wipe starts full-screen and shrinks to center.
+        size = coverSize - (coverSize - startSize) * progress;
+    } else {
+        // Leaving the screen: blue wipe expands from center to cover the screen.
+        size = startSize + (coverSize - startSize) * progress;
+    }
+
+    CP_Image_Draw(transitionImage,
+                  cx - size * 0.5f,
+                  cy - size * 0.5f,
+                  size,
+                  size,
+                  255);
+}
+
 static void handle_instructions_input(void) {
     if (!instructionsOpen) return;
 
@@ -497,6 +553,8 @@ void game_init(void) {
     debugSnapshotCount = 0;
     debugSnapshotStart = 0;
     debugSnapshotRewind = -1;
+    screenTransitionPhase = 1;
+    screenTransitionT = 0.0f;
 }
 
 // Pause menu (pause_row_y, draw_pause_menu, handle_pause_input) now owned by
@@ -513,6 +571,7 @@ void game_update(void) {
         float dt = CP_System_GetDt();
         if (dt > 1.0f / 30.0f) dt = 1.0f / 30.0f;  // prevents background tearing
 
+        update_screen_transition(dt);
         handle_debug_input();
 
         if (instructionsOpen) {
@@ -531,7 +590,7 @@ void game_update(void) {
             else paused = false;
         }
 
-        if (!instructionsOpen && !paused && !quiz_is_active() &&
+        if (screenTransitionPhase != 2 && !instructionsOpen && !paused && !quiz_is_active() &&
             (!debugPaused || debugStepRequested)) {
             bgScroll += BG_SCROLL_SPEED * dt; // background scrolls while the world is active (paused freezes it)
             if (musicMode != 2 && worldMusic) {
@@ -758,9 +817,7 @@ void game_update(void) {
             CP_Settings_TextSize(26.0f);
             CP_Font_DrawText("Click anywhere to return to menu", SCREEN_WIDTH * 0.5f, 545.0f);
             if (CP_Input_MouseClicked()) {
-                CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // back to title
-                paused = false;
-                levelComplete = false;
+                request_menu_transition();
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
             }
         }
@@ -811,6 +868,7 @@ void game_update(void) {
         quiz_draw_overlay();  // quiz/buff panels sit above HUD + pause
         draw_instructions_overlay();
         draw_debug_inspector(dt);
+        draw_screen_transition();
     }
 }
 
@@ -833,7 +891,8 @@ void game_exit(void) {
     buildlabLogoImage = NULL;
     if (bgImage) CP_Image_Free(bgImage);
     if (gameFont) CP_Font_Free(gameFont);
-    bgImage = NULL; gameFont = NULL;
+    if (transitionImage) CP_Image_Free(transitionImage);
+    bgImage = NULL; gameFont = NULL; transitionImage = NULL;
 
     if (settingsBtnImage) CP_Image_Free(settingsBtnImage);
     if (restartBtnImage) CP_Image_Free(restartBtnImage);

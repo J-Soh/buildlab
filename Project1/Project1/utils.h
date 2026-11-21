@@ -17,6 +17,7 @@ extern float screenW, screenH;
 extern float bgScroll;
 extern CP_Image bgImage;
 extern CP_Font gameFont;
+extern CP_Image transitionImage;
 
 // Shared audio: volumes + menu/click sounds (world sounds stay in game.c)
 extern int musicMode;  // 0 none, 1 menu, 2 world

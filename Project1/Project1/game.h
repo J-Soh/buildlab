@@ -24,6 +24,7 @@ void restart_from_beginning(void);
 // Full run reset (player + objects re-arm). Defined in game.c; hurt_player
 // (player.c death path) reaches it via this.
 void reset_run(void);
+void request_menu_transition(void);
 
 // Player art (defined in game.c; render_player in player.c reads them —
 // loaded/freed in game_init/game_exit, so ownership stays here)

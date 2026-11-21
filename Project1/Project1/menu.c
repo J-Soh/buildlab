@@ -2,6 +2,7 @@
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
+#include <math.h>
 
 #include "cprocessing.h"
 #include "utils.h"
@@ -26,6 +27,95 @@ static bool showSettings = false; // Toggle to view instructions overlay
 static bool showCredits = false; // Toggle to view credits page (info from credit.md)
 static bool showSkins = false;   // Toggle to view the character skin picker
 static bool showQuitConfirm = false; // Quit popup on the main menu (ESC -> "Are you sure...?")
+
+typedef enum {
+    MENU_TRANSITION_NONE = 0,
+    MENU_TRANSITION_GAME,
+    MENU_TRANSITION_SETTINGS_OPEN,
+    MENU_TRANSITION_SETTINGS_CLOSE,
+    MENU_TRANSITION_CREDITS_OPEN,
+    MENU_TRANSITION_CREDITS_CLOSE,
+    MENU_TRANSITION_SKINS_OPEN,
+    MENU_TRANSITION_SKINS_CLOSE
+} MenuTransitionAction;
+
+#define MENU_TRANSITION_DURATION 0.36f
+static int menuTransitionPhase = 0; // 0 idle, 1 fading out, 2 fading in
+static float menuTransitionT = 0.0f;
+static MenuTransitionAction menuTransitionAction = MENU_TRANSITION_NONE;
+
+static void start_menu_transition(MenuTransitionAction action) {
+    if (menuTransitionPhase != 0) return;
+    menuTransitionAction = action;
+    menuTransitionT = 0.0f;
+    menuTransitionPhase = 1;
+}
+
+static void update_menu_transition(float dt) {
+    if (menuTransitionPhase == 0) return;
+
+    menuTransitionT += dt;
+    if (menuTransitionPhase == 1 && menuTransitionT >= MENU_TRANSITION_DURATION) {
+        switch (menuTransitionAction) {
+            case MENU_TRANSITION_GAME:
+                CP_Engine_SetNextGameState(game_init, game_update, game_exit);
+                return;
+            case MENU_TRANSITION_SETTINGS_OPEN:
+                showSettings = true;
+                break;
+            case MENU_TRANSITION_SETTINGS_CLOSE:
+                showSettings = false;
+                break;
+            case MENU_TRANSITION_CREDITS_OPEN:
+                showCredits = true;
+                break;
+            case MENU_TRANSITION_CREDITS_CLOSE:
+                showCredits = false;
+                break;
+            case MENU_TRANSITION_SKINS_OPEN:
+                showSkins = true;
+                break;
+            case MENU_TRANSITION_SKINS_CLOSE:
+                showSkins = false;
+                break;
+            default:
+                break;
+        }
+        menuTransitionAction = MENU_TRANSITION_NONE;
+        menuTransitionT = 0.0f;
+        menuTransitionPhase = 2;
+    } else if (menuTransitionPhase == 2 && menuTransitionT >= MENU_TRANSITION_DURATION) {
+        menuTransitionPhase = 0;
+        menuTransitionT = 0.0f;
+    }
+}
+
+static void draw_menu_transition(void) {
+    if (menuTransitionPhase == 0) return;
+
+    float progress;
+    if (menuTransitionPhase == 1) {
+        progress = menuTransitionT / MENU_TRANSITION_DURATION;
+    } else {
+        progress = 1.0f - menuTransitionT / MENU_TRANSITION_DURATION;
+    }
+    if (progress < 0.0f) progress = 0.0f;
+    if (progress > 1.0f) progress = 1.0f;
+
+    if (!transitionImage) return;
+    CP_Settings_ImageMode(CP_POSITION_CORNER);
+    float cx = SCREEN_WIDTH * 0.5f;
+    float cy = SCREEN_HEIGHT * 0.5f;
+    float coverSize = 2.0f * sqrtf(cx * cx + cy * cy);
+    float startSize = 44.0f;
+    float size = startSize + (coverSize - startSize) * progress;
+    CP_Image_Draw(transitionImage,
+                  cx - size * 0.5f,
+                  cy - size * 0.5f,
+                  size,
+                  size,
+                  255);
+}
 
 // Forward declarations (defined below menu_update)
 static void draw_menu_ui(void);
@@ -57,6 +147,7 @@ void menu_init(void) {
     if (!creditBtnImage) creditBtnImage = CP_Image_Load("Assets/Menu/Buttons/credit.png");
     if (!digipenLogoImage) digipenLogoImage = CP_Image_Load("Assets/Other/digipen.png");
     if (!buildlabLogoImage) buildlabLogoImage = CP_Image_Load("Assets/Other/buildlab.png");
+    if (!transitionImage) transitionImage = CP_Image_Load("Assets/Other/Transition.png");
     if (!settingsBtnImage) settingsBtnImage = CP_Image_Load("Assets/Menu/Buttons/Settings.png");
     if (!clickSnd) clickSnd = CP_Sound_Load("Assets/Sound/button_click.wav");
     if (!windowOpenSnd) windowOpenSnd = CP_Sound_Load("Assets/Sound/window_open.wav");
@@ -71,6 +162,9 @@ void menu_init(void) {
     showCredits = false;
     showSkins = false;
     showQuitConfirm = false;
+    menuTransitionPhase = 2;
+    menuTransitionT = 0.0f;
+    menuTransitionAction = MENU_TRANSITION_NONE;
 }
 
 void menu_update(void) {
@@ -100,20 +194,25 @@ void menu_update(void) {
 
     draw_background(); // defined in utils.c
 
+    update_menu_transition(CP_System_GetDt());
+
     // Skin picker takes over the screen while open (it draws its own panel).
-    if (showSkins) {
+    if (showSkins && menuTransitionPhase == 0) {
         skin_picker_draw();
         if (CP_Input_KeyTriggered(KEY_ESCAPE)) {  // ESC also backs out
-            showSkins = false;
+            start_menu_transition(MENU_TRANSITION_SKINS_CLOSE);
             play_click();
             return;
         }
-        if (skin_picker_handle_input()) showSkins = false;  // BACK clicked
+        if (skin_picker_handle_input()) {
+            start_menu_transition(MENU_TRANSITION_SKINS_CLOSE);
+        }
         return;
     }
 
     draw_menu_ui();
-    handle_menu_input();
+    if (menuTransitionPhase == 0) handle_menu_input();
+    draw_menu_transition();
 }
 
 // Splash timer + skip: each stage lasts SPLASH_TIME seconds, any key or
@@ -380,7 +479,8 @@ static void handle_menu_input(void) {
 
     if (CP_Input_KeyTriggered(KEY_SPACE) &&
         !showQuitConfirm && !showSettings && !showCredits && !showSkins) {
-        CP_Engine_SetNextGameState(game_init, game_update, game_exit);  // PLAY: enter game
+        play_click();
+        start_menu_transition(MENU_TRANSITION_GAME);
     }
 
     if (CP_Input_MouseClicked()) {
@@ -402,9 +502,9 @@ static void handle_menu_input(void) {
 
         if (showSettings || showCredits) {
             if (is_mouse_over(centerX - (panelW * 0.5f), panelTop, panelW, panelH)) {
-                showSettings = false;
-                showCredits = false;
                 play_click();
+                if (showSettings) start_menu_transition(MENU_TRANSITION_SETTINGS_CLOSE);
+                if (showCredits) start_menu_transition(MENU_TRANSITION_CREDITS_CLOSE);
             }
         }
         else {
@@ -423,7 +523,7 @@ static void handle_menu_input(void) {
 
             if (is_mouse_over(playX, btnY, btnSize, btnSize)) {
                 play_click();
-                CP_Engine_SetNextGameState(game_init, game_update, game_exit);  // PLAY: enter game
+                start_menu_transition(MENU_TRANSITION_GAME);
             }
 
             // Volume button: toggles mute (red X shows muted)
@@ -434,22 +534,22 @@ static void handle_menu_input(void) {
             }
 
             if (is_mouse_over(settingsX, btnY, btnSize, btnSize)) {
-                showSettings = true;
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
                 play_click();
+                start_menu_transition(MENU_TRANSITION_SETTINGS_OPEN);
             }
 
             if (is_mouse_over(creditX, row2Y, btnSize, btnSize)) {
-                showCredits = true;
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
+                start_menu_transition(MENU_TRANSITION_CREDITS_OPEN);
                 play_click();
             }
 
             // Skin button: opens the character picker (default blue astronaut).
             if (is_mouse_over(skinX, row2Y, btnSize, btnSize)) {
-                showSkins = true;
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
                 play_click();
+                start_menu_transition(MENU_TRANSITION_SKINS_OPEN);
             }
         }
     }

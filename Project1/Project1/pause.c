@@ -221,8 +221,7 @@ static void run_confirmed_action(void) {
     } else if (confirmAction == 2) {
         restart_from_beginning(); paused = false;  // RESTART: from beginning
     } else if (confirmAction == 3) {
-        CP_Engine_SetNextGameState(menu_init, menu_update, menu_exit);  // MENU: back to title
-        paused = false;
+        request_menu_transition();  // fade out game before returning to menu
         if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
     }
     showConfirm = false;
