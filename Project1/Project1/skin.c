@@ -56,15 +56,15 @@ CP_Image skin_preview_idle(int index) {
     return previewIdle[index];
 }
 
-void skin_draw_preview(int index, float x, float y, float size, int frame) {
+void skin_draw_preview(int index, float x, float y, float size) {
     CP_Image img = skin_preview_idle(index);
-    if (!img) return;
-    int frames = CP_Image_GetWidth(img) / 32;  // idle strips are 11 x 32px cells
-    if (frames <= 0) return;
-    frame %= frames;
-    if (frame < 0) frame += frames;
-    float u0 = (float)(frame * 32);
-    CP_Image_DrawSubImage(img, x, y, size, size, u0, 0.0f, u0 + 32.0f, 32.0f, 255);
+    if (!img)
+        return;
+    // idle strips are 11 x 32px cells, we just need to know if it's wide enough
+    if (CP_Image_GetWidth(img) < 32)
+        return;
+    // Always draw the first cell (frame 0)
+    CP_Image_DrawSubImage(img, x, y, size, size, 0.0f, 0.0f, 32.0f, 32.0f, 255);
 }
 
 // Shared geometry helpers so the draw and input passes always agree.
@@ -94,10 +94,6 @@ void skin_picker_draw(void) {
     float cx, cy, top;
     picker_panel(&cx, &cy, &top);
 
-    // Idle animation clock (slow, so the previews look alive but not busy).
-    static float animT = 0.0f;
-    animT += CP_System_GetDt();
-
     // Dim whatever is behind (menu background or the frozen game world).
     CP_Settings_RectMode(CP_POSITION_CORNER);
     CP_Settings_Fill(CP_Color_Create(0, 0, 0, 150));
@@ -115,7 +111,6 @@ void skin_picker_draw(void) {
     CP_Settings_Fill(CP_Color_Create(80, 80, 80, 255));
     CP_Settings_TextSize(24.0f);
 
-    int frame = ((int)(animT * 8.0f)) % 11;
     for (int i = 0; i < SKIN_COUNT; i++) {
         float x, y;
         picker_card(i, &x, &y);
@@ -124,8 +119,7 @@ void skin_picker_draw(void) {
 
         // Card body: selected one is warmer; hover adds a soft orange wash.
         CP_Settings_RectMode(CP_POSITION_CORNER);
-        CP_Settings_Fill(selected ? CP_Color_Create(252, 236, 205, 255)
-                                  : CP_Color_Create(236, 222, 202, 255));
+        CP_Settings_Fill(selected ? CP_Color_Create(252, 236, 205, 255): CP_Color_Create(236, 222, 202, 255));
         CP_Graphics_DrawRect(x, y, PICKER_CARD_W, PICKER_CARD_H);
         if (hover) {
             CP_Settings_Fill(CP_Color_Create(215, 140, 40, 70));
@@ -140,7 +134,7 @@ void skin_picker_draw(void) {
         CP_Graphics_DrawRect(x, y, PICKER_CARD_W, PICKER_CARD_H);
         CP_Settings_NoStroke();
 
-        skin_draw_preview(i, x + (PICKER_CARD_W - 96.0f) * 0.5f, y + 14.0f, 96.0f, frame);
+        skin_draw_preview(i, x + (PICKER_CARD_W - 96.0f) * 0.5f, y + 14.0f, 96.0f);
 
         CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
         CP_Settings_TextSize(24.0f);  // "Blue Astronaut" must fit inside the card
@@ -164,8 +158,7 @@ void skin_picker_draw(void) {
     bool backHover = is_mouse_over(bx, by, PICKER_BACK_W, PICKER_BACK_H);
 
     CP_Settings_RectMode(CP_POSITION_CORNER);
-    CP_Settings_Fill(backHover ? CP_Color_Create(215, 140, 40, 170)
-                               : CP_Color_Create(236, 222, 202, 255));
+    CP_Settings_Fill(backHover ? CP_Color_Create(215, 140, 40, 170): CP_Color_Create(236, 222, 202, 255));
     CP_Graphics_DrawRect(bx, by, PICKER_BACK_W, PICKER_BACK_H);
     CP_Settings_NoFill();
     CP_Settings_Stroke(CP_Color_Create(215, 140, 40, 255));
@@ -173,8 +166,7 @@ void skin_picker_draw(void) {
     CP_Graphics_DrawRect(bx, by, PICKER_BACK_W, PICKER_BACK_H);
     CP_Settings_NoStroke();
 
-    CP_Settings_Fill(backHover ? CP_Color_Create(180, 50, 40, 255)
-                               : CP_Color_Create(40, 40, 40, 255));
+    CP_Settings_Fill(backHover ? CP_Color_Create(180, 50, 40, 255): CP_Color_Create(40, 40, 40, 255));
     CP_Settings_TextSize(32.0f);
     CP_Font_DrawText("BACK", cx, by + PICKER_BACK_H * 0.5f);
 }
