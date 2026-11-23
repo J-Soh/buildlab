@@ -1,6 +1,5 @@
-﻿  skin.c
-B:\Digipen\Y1T1\buildlab\Project1\Project1\skin.c(59,6): warning C4029: declared formal parameter list different from definition
-  Project1.vcxproj -> B:\Digipen\Y1T1\buildlab\Project1\bin\Debug-x64\Project1.exe
+﻿  entity.c
+  Project1.vcxproj -> C:\Workflow\Repo\buildlab\Project1\bin\Debug-x64\Project1.exe
   291 File(s) copied
   1 File(s) copied
   1 File(s) copied

@@ -183,6 +183,8 @@ static void draw_debug_hitboxes(void) {
             CP_Settings_Stroke(CP_Color_Create(255, 80, 80, 255));
         } else if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO) {
             CP_Settings_Stroke(CP_Color_Create(255, 220, 80, 255));
+        } else if (e->kind == ENT_BAT) {
+            CP_Settings_Stroke(CP_Color_Create(180, 140, 255, 255));
         } else if (e->kind >= ENT_FRUIT_ORANGE && e->kind <= ENT_FRUIT_STRAWBERRY) {
             CP_Settings_Stroke(CP_Color_Create(80, 255, 140, 255));
         } else {
@@ -337,7 +339,7 @@ static void draw_instructions_overlay(void) {
 
     CP_Font_DrawText("A / D - Move left and right", left, y);
     CP_Font_DrawText("SPACE to Jump. Double-tap for double jump. Hold SPACE for higer Jump", left, y += lineGap);
-    CP_Font_DrawText("Rinos and Chickens are enemies", left, y += lineGap);
+    CP_Font_DrawText("Rinos, Chickens & bats are enemies", left, y += lineGap);
     CP_Font_DrawText("Jump on top of enemies to defeat them", left, y += lineGap);
     CP_Font_DrawText("Fruits give 50 points, and Defeating enemies gives 100 points", left, y += lineGap);
     CP_Font_DrawText("Checkpoints trigger quizzes; correct answers give a buff", left, y += lineGap);
@@ -432,6 +434,9 @@ void reset_run(void) {
         e->x = e->sx; e->y = e->sy;
         if (e->kind == ENT_CHICKEN || e->kind == ENT_RINO) {
             e->vx = 0.0f;  // facing kept from Tiled spawn; update loop drives movement
+        } else if (e->kind == ENT_BAT) {
+            e->vx = 0.0f;
+            e->facing = 1;
         } else {
             e->vx = (def->speed > 0.0f) ? (((i & 1) == 0) ? -def->speed : def->speed) : 0.0f;
             e->facing = e->vx >= 0.0f ? 1 : -1; // Facing towards right if movement more than 0
@@ -440,7 +445,7 @@ void reset_run(void) {
         e->grounded = false;
         e->activated = false;
         e->animT = 0.0f;
-        e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;
+        e->animState = (e->kind == ENT_BAT) ? 0 : 1; e->stateT = 0.0f; e->deathT = 0.0f;
     }
 
     if (respawnSnd) CP_Sound_Play(respawnSnd); // play sound whenever player respawn
@@ -913,9 +918,12 @@ void game_exit(void) {
         if (entityPool[i].idleImg) CP_Image_Free(entityPool[i].idleImg);
         if (entityPool[i].runImg) CP_Image_Free(entityPool[i].runImg);
         if (entityPool[i].hitImg) CP_Image_Free(entityPool[i].hitImg);
+        if (entityPool[i].ceilingOutImg) CP_Image_Free(entityPool[i].ceilingOutImg);
+        if (entityPool[i].ceilingInImg) CP_Image_Free(entityPool[i].ceilingInImg);
         entityPool[i].baseImage = NULL; entityPool[i].altImage = NULL;
         entityPool[i].idleImg = NULL; entityPool[i].runImg = NULL;
         entityPool[i].hitImg = NULL;
+        entityPool[i].ceilingOutImg = NULL; entityPool[i].ceilingInImg = NULL;
     }
     entityCount = 0;  // spawn pool restarts empty on next entry
     CP_Sound_StopAll();

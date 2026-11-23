@@ -15,6 +15,9 @@ const EntityDef ENTITY_DEFS[ENT_COUNT] = {
                                                                             32, 34, 0.68f, 0.68f, false, 110.0f, 10.0f },
     { "Assets/Enemies/Rino/Run (52x34).png",    NULL, NULL, NULL, "Assets/Enemies/Rino/Hit (52x34).png",
                                                                             52, 34, 0.68f, 0.68f, false, 130.0f,  8.0f },
+    { "Assets/Enemies/Bat/Flying (46x30).png", NULL, "Assets/Enemies/Bat/Idle (46x30).png",
+      "Assets/Enemies/Bat/Flying (46x30).png", "Assets/Enemies/Bat/Hit (46x30).png",
+                                                                            46, 30, 0.60f, 0.60f, false, 150.0f, 12.0f },
     { "Assets/Items/Checkpoints/Start/Start (Idle).png", NULL, NULL, NULL, NULL,
                                                                             64, 64, 0.55f, 0.55f, false, 0.0f,  1.0f },
     { "Assets/Items/Checkpoints/Checkpoint/Checkpoint (No Flag).png",
@@ -43,6 +46,7 @@ static EntityKind kind_from_layer_name(const char* name) {
     if (strstr(name, "Spikes"))      return ENT_SPIKES;
     if (strstr(name, "Chicken"))     return ENT_CHICKEN;
     if (strstr(name, "Rino"))        return ENT_RINO;
+    if (strstr(name, "Bat"))         return ENT_BAT;
     if (strstr(name, "Start"))       return ENT_START;
     if (strstr(name, "Checkpoint"))  return ENT_CHECKPOINT;
     if (strstr(name, "End"))         return ENT_END;
@@ -75,11 +79,13 @@ static Entity* spawn_entity(EntityKind kind, float wx, float wy) {
     e->active = true; // true = alive (so update/draw/collision can process it)
     e->baseImage = def->path ? CP_Image_Load(def->path) : NULL; // load image's kind sprites (544 x 32 pixels (Kiwi) or 38x38 pixels (Saw))
     e->altImage = def->altPath ? CP_Image_Load(def->altPath) : NULL; // altImage only used by Checkpoint (NoFlag -> Flag)
-    // Per-state strips (Chicken/Rino Run-Hit); NULL = reuse baseImage
-    // e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL; (no idle strip for any entity)
+    // Per-state strips (Chicken/Rino/Bat).
+    e->idleImg = def->idlePath ? CP_Image_Load(def->idlePath) : NULL;
     e->runImg = def->runPath ? CP_Image_Load(def->runPath) : NULL;
     e->hitImg = def->hitPath ? CP_Image_Load(def->hitPath) : NULL;
-    e->animState = 1; e->stateT = 0.0f; e->deathT = 0.0f;  // start in run state
+    e->ceilingOutImg = (kind == ENT_BAT) ? CP_Image_Load("Assets/Enemies/Bat/Ceiling Out (46x30).png") : NULL;
+    e->ceilingInImg = (kind == ENT_BAT) ? CP_Image_Load("Assets/Enemies/Bat/Ceiling In (46x30).png") : NULL;
+    e->animState = (kind == ENT_BAT) ? 0 : 1; e->stateT = 0.0f; e->deathT = 0.0f;
     e->cellW = def->cellW; // weight of image (e.g. 32)
     e->cellH = def->cellH; // height of image (e.g. 32)
     e->totalFrames = 1;    // updates each frame by 1
@@ -308,8 +314,8 @@ void load_map_json(const char* filepath) {
         int counts[ENT_COUNT] = { 0 };
         for (int i = 0; i < entityCount; i++)
             if (entityPool[i].kind < ENT_COUNT) counts[entityPool[i].kind]++;
-        printf("Entities: saw %d, spikes %d, chicken %d, rino %d, start %d, checkpoint %d, end %d, orange %d, cherries %d, kiwi %d, melon %d, strawberry %d\n",
-            counts[ENT_SAW], counts[ENT_SPIKES], counts[ENT_CHICKEN], counts[ENT_RINO],
+        printf("Entities: saw %d, spikes %d, chicken %d, rino %d, bat %d, start %d, checkpoint %d, end %d, orange %d, cherries %d, kiwi %d, melon %d, strawberry %d\n",
+            counts[ENT_SAW], counts[ENT_SPIKES], counts[ENT_CHICKEN], counts[ENT_RINO], counts[ENT_BAT],
             counts[ENT_START], counts[ENT_CHECKPOINT], counts[ENT_END], counts[ENT_FRUIT_ORANGE], counts[ENT_FRUIT_CHERRIES],
             counts[ENT_FRUIT_KIWI], counts[ENT_FRUIT_MELON], counts[ENT_FRUIT_STRAWBERRY]);
     }

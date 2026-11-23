@@ -14,9 +14,10 @@
 typedef enum {
     ENT_SAW, ENT_SPIKES, // 0-1
     ENT_CHICKEN, ENT_RINO, // 2-3
-    ENT_START, ENT_CHECKPOINT, ENT_END, // 4-6
-    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY, // 7-11
-    ENT_COUNT // 12
+    ENT_BAT, // 4
+    ENT_START, ENT_CHECKPOINT, ENT_END, // 5-7
+    ENT_FRUIT_ORANGE, ENT_FRUIT_CHERRIES, ENT_FRUIT_KIWI, ENT_FRUIT_MELON, ENT_FRUIT_STRAWBERRY, // 8-12
+    ENT_COUNT // 13
 } EntityKind;
 
 typedef struct {
@@ -39,7 +40,8 @@ typedef struct {
     bool active;     // true = still in game. false = object no longer in game (like rino dies, or fruit collected already)
     CP_Image baseImage, altImage;
     CP_Image idleImg, runImg, hitImg; // per-state strips (NULL = reuse baseImage)
-    int animState;   // 1 = run, 2 = hit flash
+    CP_Image ceilingOutImg, ceilingInImg; // bat one-shot wake/return strips
+    int animState;   // 0 idle, 1 run/fly, 2 hit, 3 bat wake, 4 bat return
     float stateT;    // time in current animState
     float deathT;    // >0 = stomped, Hit strip playing, counts down to deactivate
     int totalFrames, cellW, cellH;

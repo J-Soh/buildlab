@@ -9,6 +9,10 @@
 
 #define ENT_GRAVITY 2400.0f
 #define ENT_MAX_FALL 950.0f
+#define BAT_AGGRO_RADIUS 344.0f
+#define BAT_CHASE_SPEED 150.0f
+#define BAT_WAKE_TIME 0.45f
+#define BAT_RETURN_TIME 0.45f
 
 // Move every living object (gravity + chicken/rino patrol; traps stay put)
 void update_entities(float dt) {
@@ -28,12 +32,89 @@ void update_entities(float dt) {
         }
 
         // Enemies Hit flash after hurting the PLAYER (stomp-deaths use deathT instead).
-        if (e->animState == 2 && e->stateT > 0.5f) { e->animState = 1; e->stateT = 0.0f; }
+        if (e->animState == 2 && e->stateT > 0.5f && e->kind != ENT_BAT) {
+            e->animState = 1;
+            e->stateT = 0.0f;
+        }
 
         bool isFruit = e->kind >= ENT_FRUIT_ORANGE && e->kind <= ENT_FRUIT_STRAWBERRY;
         bool physicsBody = !def->hazard && !isFruit
             && e->kind != ENT_START && e->kind != ENT_CHECKPOINT && e->kind != ENT_END;
         if (!physicsBody) continue;
+
+        if (e->kind == ENT_BAT) {
+            float pcx = player.x + PLAYER_HB_W * 0.5f;
+            float pcy = player.y + PLAYER_HB_H * 0.5f;
+            float dx = pcx - e->x;
+            float dy = pcy - e->y;
+            float dist = sqrtf(dx * dx + dy * dy);
+
+            if (e->animState == 2) {
+                e->vx = 0.0f;
+                e->vy = 0.0f;
+                if (e->stateT > 0.5f) {
+                    e->animState = (dist < BAT_AGGRO_RADIUS) ? 1 : 4;
+                    e->stateT = 0.0f;
+                }
+            } else if (e->animState == 0) {
+                e->vx = 0.0f;
+                e->vy = 0.0f;
+                if (dist < BAT_AGGRO_RADIUS && !levelComplete) {
+                    e->animState = 3;
+                    e->stateT = 0.0f;
+                }
+            } else if (e->animState == 3) {
+                e->vx = 0.0f;
+                e->vy = 0.0f;
+                if (e->stateT >= BAT_WAKE_TIME) {
+                    e->animState = 1;
+                    e->stateT = 0.0f;
+                }
+            } else if (e->animState == 4) {
+                e->vx = 0.0f;
+                e->vy = 0.0f;
+                if (e->stateT >= BAT_RETURN_TIME) {
+                    e->x = e->sx;
+                    e->y = e->sy;
+                    e->animState = 0;
+                    e->stateT = 0.0f;
+                }
+            } else if (e->animState == 1) {
+                float tx, ty;
+                if (dist < BAT_AGGRO_RADIUS * 1.5f && !levelComplete) {
+                    tx = pcx;
+                    ty = pcy;
+                } else {
+                    tx = e->sx;
+                    ty = e->sy;
+                }
+
+                float mx = tx - e->x;
+                float my = ty - e->y;
+                float ml = sqrtf(mx * mx + my * my);
+                if (ml > 1.0f) {
+                    float nx = e->x + mx / ml * BAT_CHASE_SPEED * enemySpeedMul * dt;
+                    float ny = e->y + my / ml * BAT_CHASE_SPEED * enemySpeedMul * dt;
+                    if (!is_solid_px(nx + ((mx > 0.0f) ? e->w * 0.5f : -e->w * 0.5f), e->y))
+                        e->x = nx;
+                    if (!is_solid_px(e->x, ny + ((my > 0.0f) ? e->h * 0.5f : -e->h * 0.5f)))
+                        e->y = ny;
+                    e->facing = (mx >= 0.0f) ? 1 : -1;
+                }
+                e->vx = mx / (ml > 1.0f ? ml : 1.0f) * BAT_CHASE_SPEED * enemySpeedMul;
+                e->vy = my / (ml > 1.0f ? ml : 1.0f) * BAT_CHASE_SPEED * enemySpeedMul;
+
+                float hx = e->sx - e->x;
+                float hy = e->sy - e->y;
+                if (dist >= BAT_AGGRO_RADIUS * 1.5f && sqrtf(hx * hx + hy * hy) < 10.0f) {
+                    e->x = e->sx;
+                    e->y = e->sy;
+                    e->animState = 4;
+                    e->stateT = 0.0f;
+                }
+            }
+            continue;
+        }
 
         // Gravity + landing
 
@@ -100,13 +181,21 @@ void render_entities(void) {
         const EntityDef* def = &ENTITY_DEFS[e->kind];
         CP_Image img = e->baseImage;
         if (e->kind == ENT_CHECKPOINT && e->activated && e->altImage) img = e->altImage;
-        // Multi-state enemies (Chicken/Rino Hit): pick the current strip.
-        bool hasStates = e->idleImg || e->runImg || e->hitImg;
+        // Multi-state enemies: pick the current strip.
+        bool hasStates = e->idleImg || e->runImg || e->hitImg ||
+                         e->ceilingOutImg || e->ceilingInImg;
         if (hasStates) {
-            if (e->animState == 2 && e->hitImg) img = e->hitImg;
-            // else if (e->animState == 0 && e->idleImg) img = e->idleImg; // no idle strip for any entity
-            else if (e->animState == 1 && e->runImg) img = e->runImg;
-            else if (e->baseImage) img = e->baseImage;
+            if (e->kind == ENT_BAT) {
+                if (e->animState == 0 && e->idleImg) img = e->idleImg;
+                else if (e->animState == 1 && e->runImg) img = e->runImg;
+                else if (e->animState == 2 && e->hitImg) img = e->hitImg;
+                else if (e->animState == 3 && e->ceilingOutImg) img = e->ceilingOutImg;
+                else if (e->animState == 4 && e->ceilingInImg) img = e->ceilingInImg;
+            } else {
+                if (e->animState == 2 && e->hitImg) img = e->hitImg;
+                else if (e->animState == 1 && e->runImg) img = e->runImg;
+                else if (e->baseImage) img = e->baseImage;
+            }
         }
         if (!img) continue;
 
@@ -123,6 +212,11 @@ void render_entities(void) {
         int frame = (frames > 1) ? (((int)(e->animT * animFps)) % frames) : 0;
         // Hit is one-shot (PixelAdventure style): hold on the last frame until deathT removes it
         if (hasStates && e->animState == 2) {
+            frame = (int)(e->stateT * 10.0f);
+            if (frame > frames - 1) frame = frames - 1;
+            if (frame < 0) frame = 0;
+        }
+        if (e->kind == ENT_BAT && (e->animState == 3 || e->animState == 4)) {
             frame = (int)(e->stateT * 10.0f);
             if (frame > frames - 1) frame = frames - 1;
             if (frame < 0) frame = 0;
