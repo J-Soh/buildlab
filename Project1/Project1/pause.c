@@ -38,20 +38,21 @@ void draw_pause_menu(void) {
     CP_Settings_Fill(CP_Color_Create(0, 0, 0, 140));
     CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
 
+    float centerX = SCREEN_WIDTH * 0.5f;
     if (gameFont) CP_Font_Set(gameFont);
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
     // Banner
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 140.0f, 420.0f, 96.0f);
+    draw_cream_panel(centerX, 140.0f, 420.0f, 96.0f);
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(54.0f);
-    CP_Font_DrawText(pausePage == 0 ? "PAUSED" : "OPTIONS", SCREEN_WIDTH * 0.5f, 140.0f);
+    CP_Font_DrawText(pausePage == 0 ? "PAUSED" : "OPTIONS", centerX, 140.0f);
 
-    float rect_x = 610.0f; 
+    float rect_x = centerX - 190.0f;
     float rect_w = 380.0f;
 
     // Top panel (taller on the main page: four rows now)
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 395.0f, 440.0f, 370.0f);
+    draw_cream_panel(centerX, 395.0f, 440.0f, 370.0f);
     CP_Settings_TextSize(40.0f);
 
     if (pausePage == 0) {
@@ -74,13 +75,12 @@ void draw_pause_menu(void) {
         for (int i = 0; i < 3; i++) {
             float ry = pause_row_y(i);
             if (i < 2) {
-                // Centered coordinates: shifted +160px
                 float vol = (i == 0) ? musicVol : sfxVol;
                 
-                float minus_x = 787.0f;  
-                float plus_x  = 922.0f;  
-                float val_x   = 878.0f;  
-                float label_x = 670.0f;  
+                float minus_x = centerX - 13.0f;
+                float plus_x  = centerX + 122.0f;
+                float val_x   = centerX + 78.0f;
+                float label_x = centerX - 130.0f;
 
                 bool hovMinus = is_mouse_over(minus_x, ry - 24.0f, 48.0f, 48.0f);
                 bool hovPlus  = is_mouse_over(plus_x, ry - 24.0f, 48.0f, 48.0f);
@@ -106,7 +106,7 @@ void draw_pause_menu(void) {
                 CP_Font_DrawText(rows[i], label_x, ry);
             }
             else {
-                // BACK button: uses the centered rect_x (610.0f) and rect_w (380.0f)
+                // BACK button shares the centered row hitbox.
                 bool hover = is_mouse_over(rect_x, ry - 28.0f, rect_w, 56.0f);
                 
                 if (hover) {
@@ -115,33 +115,35 @@ void draw_pause_menu(void) {
                     CP_Graphics_DrawRect(rect_x, ry - 28.0f, rect_w, 56.0f);
                 }
                 CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-                CP_Font_DrawText(rows[i], SCREEN_WIDTH * 0.5f, ry);
+                CP_Font_DrawText(rows[i], centerX, ry);
             }
         }
     }
 
     // Bottom panel: MENU | QUIT (moved down to clear the taller top panel)
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 640.0f, 440.0f, 100.0f);
+    draw_cream_panel(centerX, 640.0f, 440.0f, 100.0f);
     CP_Settings_RectMode(CP_POSITION_CORNER);
+    float menuButtonX = centerX - 200.0f;
+    float quitButtonX = centerX;
 
     // If mouse hovers over MENU button, draw orange rect
-    if (is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f)) {
+    if (is_mouse_over(menuButtonX, 612.0f, 200.0f, 56.0f)) {
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
         // Format: x-axis, y-axis, width, height
-        CP_Graphics_DrawRect(600.0f, 612.0f, 200.0f, 56.0f);
+        CP_Graphics_DrawRect(menuButtonX, 612.0f, 200.0f, 56.0f);
     }
 
     // If mouse hovers over QUIT button, draw orange rect
-    if (is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f)) {
+    if (is_mouse_over(quitButtonX, 612.0f, 200.0f, 56.0f)) {
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(800.0f, 612.0f, 200.0f, 56.0f);
+        CP_Graphics_DrawRect(quitButtonX, 612.0f, 200.0f, 56.0f);
     }
     // Menu Text dark gray or orange if mouse hover over it
-    CP_Settings_Fill(is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("MENU", 700.0f, 640.0f);
+    CP_Settings_Fill(is_mouse_over(menuButtonX, 612.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("MENU", menuButtonX + 100.0f, 640.0f);
     // Quit button dark gray or orange if mouse hovers over it.
-    CP_Settings_Fill(is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("QUIT", 900.0f, 640.0f);
+    CP_Settings_Fill(is_mouse_over(quitButtonX, 612.0f, 200.0f, 56.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("QUIT", quitButtonX + 100.0f, 640.0f);
 
     draw_confirm_popup();  // confirm overlay for QUIT / RESTART / back-to-MENU (no-op unless armed)
 }
@@ -151,6 +153,9 @@ void draw_pause_menu(void) {
 // draw_pause_menu above — never called from inside a click branch.
 static void draw_confirm_popup(void) {
     if (!showConfirm) return;
+    float centerX = SCREEN_WIDTH * 0.5f;
+    float yesX = centerX - 220.0f;
+    float noX = centerX + 60.0f;
 
     // Dark overlay over the pause menu (same look as the pause dim)
     CP_Settings_RectMode(CP_POSITION_CORNER);
@@ -158,7 +163,7 @@ static void draw_confirm_popup(void) {
     CP_Graphics_DrawRect(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Card
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 360.0f, 560.0f, 250.0f);
+    draw_cream_panel(centerX, 360.0f, 560.0f, 250.0f);
     if (gameFont) CP_Font_Set(gameFont);
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
@@ -170,30 +175,30 @@ static void draw_confirm_popup(void) {
 
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(52.0f);
-    CP_Font_DrawText(title, SCREEN_WIDTH * 0.5f, 300.0f);
+    CP_Font_DrawText(title, centerX, 300.0f);
 
     CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
     CP_Settings_TextSize(30.0f);
-    CP_Font_DrawText(subtitle, SCREEN_WIDTH * 0.5f, 348.0f);
+    CP_Font_DrawText(subtitle, centerX, 348.0f);
 
     // YES / NO buttons (hover highlight + label, pause-menu style)
     CP_Settings_RectMode(CP_POSITION_CORNER);
-    if (is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f)) { // "YES" button
+    if (is_mouse_over(yesX, 404.0f, 160.0f, 52.0f)) { // "YES" button
         // draw orange near-transparent color rect when user mouse hovers over it
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(580.0f, 404.0f, 160.0f, 52.0f);
+        CP_Graphics_DrawRect(yesX, 404.0f, 160.0f, 52.0f);
     }
-    if (is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f)) { // "NO" button
+    if (is_mouse_over(noX, 404.0f, 160.0f, 52.0f)) { // "NO" button
         // draw orange near-transparent color rect when user mouse hovers over it
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(860.0f, 404.0f, 160.0f, 52.0f);
+        CP_Graphics_DrawRect(noX, 404.0f, 160.0f, 52.0f);
     }
 
     CP_Settings_TextSize(38.0f);
-    CP_Settings_Fill(is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("YES", 660.0f, 430.0f);
-    CP_Settings_Fill(is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("NO", 940.0f, 430.0f);
+    CP_Settings_Fill(is_mouse_over(yesX, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("YES", yesX + 80.0f, 430.0f);
+    CP_Settings_Fill(is_mouse_over(noX, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("NO", noX + 80.0f, 430.0f);
 }
 
 bool pause_confirm_open(void) { return showConfirm; }
@@ -233,11 +238,12 @@ void handle_pause_input(void) {
     // Popup open: only YES / NO (+ Y/ENTER, N) count; pause buttons underneath are blocked.
     // (ESC is caught by game.c's routing, which cancels via pause_cancel_confirm.)
     if (showConfirm) {
+        float centerX = SCREEN_WIDTH * 0.5f;
         if (CP_Input_KeyTriggered(KEY_Y) || CP_Input_KeyTriggered(KEY_ENTER)) { run_confirmed_action(); return; }
         if (CP_Input_KeyTriggered(KEY_N)) { pause_cancel_confirm(); return; }
         if (CP_Input_MouseClicked()) {
-            if (is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f)) run_confirmed_action();  // YES: do it
-            else if (is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f)) { pause_cancel_confirm(); play_click(); }  // NO: back
+            if (is_mouse_over(centerX - 220.0f, 404.0f, 160.0f, 52.0f)) run_confirmed_action();  // YES: do it
+            else if (is_mouse_over(centerX + 60.0f, 404.0f, 160.0f, 52.0f)) { pause_cancel_confirm(); play_click(); }  // NO: back
         }
         return;
     }
@@ -252,12 +258,13 @@ void handle_pause_input(void) {
     }
 
     bool clicked = CP_Input_MouseClicked();
+    float centerX = SCREEN_WIDTH * 0.5f;
     if (pausePage == 0) { // main pause menu: RESUME, RESTART, OPTIONS, SKINS, MENU, QUIT
         if (!clicked) return;
         // RESUME, RESTART, OPTIONS, SKINS click button area:
         for (int i = 0; i < 4; i++) {
             float ry = pause_row_y(i); // 4 buttons are stacked vertically on top of each other: 310, 380, 450, 520
-            if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) {
+            if (is_mouse_over(centerX - 190.0f, ry - 28.0f, 380.0f, 56.0f)) {
                 if (i == 0) paused = false;  // RESUME
                 else if (i == 1) { arm_confirm(2); }  // RESTART: confirm first, then from beginning
                 else if (i == 2) { pausePage = 1; if (windowOpenSnd) CP_Sound_Play(windowOpenSnd); }  // OPTIONS
@@ -267,11 +274,11 @@ void handle_pause_input(void) {
             }
         }
         // MENU click button area:
-        if (is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f)) {
+        if (is_mouse_over(centerX - 200.0f, 612.0f, 200.0f, 56.0f)) {
             arm_confirm(3);  // confirm first, then back to title
             play_click();
         } // QUIT click button area:
-        else if (is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f)) {
+        else if (is_mouse_over(centerX, 612.0f, 200.0f, 56.0f)) {
             arm_confirm(1);  // confirm first, then close the game
             play_click();
         }
@@ -280,14 +287,16 @@ void handle_pause_input(void) {
         if (!clicked) return;
         for (int i = 0; i < 2; i++) {
             float ry = pause_row_y(i);
+            float minusX = centerX - 13.0f;
+            float plusX = centerX + 122.0f;
             float* vol = (i == 0) ? &musicVol : &sfxVol;
-            if (is_mouse_over(787.0f, ry - 24.0f, 48.0f, 48.0f)) {
+            if (is_mouse_over(minusX, ry - 24.0f, 48.0f, 48.0f)) {
                 *vol -= 0.1f; if (*vol < 0.0f) *vol = 0.0f;
                 apply_volumes();
                 play_click();
                 return;
             }
-            if (is_mouse_over(922.0f, ry - 24.0f, 48.0f, 48.0f)) {
+            if (is_mouse_over(plusX, ry - 24.0f, 48.0f, 48.0f)) {
                 *vol += 0.1f; if (*vol > 1.0f) *vol = 1.0f;
                 apply_volumes();
                 if (i == 1 && stepSnd) CP_Sound_Play(stepSnd);
@@ -296,12 +305,12 @@ void handle_pause_input(void) {
             }
         } 
         float ry = pause_row_y(2);
-        if (is_mouse_over(610.0f, ry - 28.0f, 380.0f, 56.0f)) { pausePage = 0; play_click(); }  // BACK click button area
-        if (is_mouse_over(600.0f, 612.0f, 200.0f, 56.0f)) { // MENU click button area
+        if (is_mouse_over(centerX - 190.0f, ry - 28.0f, 380.0f, 56.0f)) { pausePage = 0; play_click(); }  // BACK click button area
+        if (is_mouse_over(centerX - 200.0f, 612.0f, 200.0f, 56.0f)) { // MENU click button area
             arm_confirm(3);  // confirm first, then back to title
             play_click();
         } // QUIT click button area:
-        else if (is_mouse_over(800.0f, 612.0f, 200.0f, 56.0f)) {
+        else if (is_mouse_over(centerX, 612.0f, 200.0f, 56.0f)) {
             arm_confirm(1);  // confirm first, then close the game
             play_click();
         }

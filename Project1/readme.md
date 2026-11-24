@@ -1,3 +1,8 @@
+- (Do not use this branch for project)
+- This game runs in full screen.
+
+----
+
 ## Requirements & How to run game:
 - This game requires the approved external library: [cJSON.c](https://github.com/DaveGamble/cJSON/blob/master/cJSON.c), and [cJSON.h](https://github.com/DaveGamble/cJSON/blob/master/cJSON.h)
 - To run this game: 
@@ -11,8 +16,6 @@
 - F2: pause/resume simulation
 - F3: advance one frame while paused
 - F4: rewind to a previous snapshot
-
-
 
 ---
 

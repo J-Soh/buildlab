@@ -12,19 +12,9 @@
 // --- Menu button art (shared with game_exit, which frees them at terminate) ---
 CP_Image playBtnImage = NULL;
 CP_Image volBtnImage = NULL;
-CP_Image creditBtnImage = NULL;
-CP_Image digipenLogoImage = NULL;  // DigiPen logo shown on the credits page
-CP_Image buildlabLogoImage = NULL;  // team logo shown on the splash screen
-
-// --- Splash screens (exe start only): DigiPen logo 2s, then team logo 2s ---
-#define SPLASH_TIME 2.0f  // seconds each splash screen stays up (skippable)
-static int splashStage = 0;      // 0 DigiPen, 1 team, 2 done (main menu)
-static float splashT = 0.0f;
-static bool splashShown = false; // splash plays once per exe run, not on quit-to-menu returns
 
 // Menu page state
 static bool showSettings = false; // Toggle to view instructions overlay
-static bool showCredits = false; // Toggle to view credits page (info from credit.md)
 static bool showSkins = false;   // Toggle to view the character skin picker
 static bool showQuitConfirm = false; // Quit popup on the main menu (ESC -> "Are you sure...?")
 
@@ -33,8 +23,6 @@ typedef enum {
     MENU_TRANSITION_GAME,
     MENU_TRANSITION_SETTINGS_OPEN,
     MENU_TRANSITION_SETTINGS_CLOSE,
-    MENU_TRANSITION_CREDITS_OPEN,
-    MENU_TRANSITION_CREDITS_CLOSE,
     MENU_TRANSITION_SKINS_OPEN,
     MENU_TRANSITION_SKINS_CLOSE
 } MenuTransitionAction;
@@ -65,12 +53,6 @@ static void update_menu_transition(float dt) {
                 break;
             case MENU_TRANSITION_SETTINGS_CLOSE:
                 showSettings = false;
-                break;
-            case MENU_TRANSITION_CREDITS_OPEN:
-                showCredits = true;
-                break;
-            case MENU_TRANSITION_CREDITS_CLOSE:
-                showCredits = false;
                 break;
             case MENU_TRANSITION_SKINS_OPEN:
                 showSkins = true;
@@ -120,17 +102,14 @@ static void draw_menu_transition(void) {
 // Forward declarations (defined below menu_update)
 static void draw_menu_ui(void);
 static void handle_menu_input(void);
-static void update_splash(void);  // splash timer + skip, then main menu
-static void draw_splash(void);
 
 void menu_init(void) {
-    CP_System_SetWindowSize((int)screenW, (int)screenH);
+    CP_System_Fullscreen();
     screenW = (float)CP_System_GetWindowWidth();
     screenH = (float)CP_System_GetWindowHeight();
 
-    // Set refresh rate for current computer / monitor's max refresh rate.
-    int refresh = CP_System_GetDisplayRefreshRate();
-    if (refresh > 0) CP_System_SetFrameRate((float)refresh);
+    // Keep the frame limiter from capping the game at the monitor's refresh rate.
+    CP_System_SetFrameRate(1000.0f);
 
     CP_System_SetWindowTitle("Pixel Adventure");
 
@@ -144,9 +123,6 @@ void menu_init(void) {
     if (!gameFont) gameFont = CP_Font_Load("Assets/ThaleahFat.ttf");
     if (!playBtnImage) playBtnImage = CP_Image_Load("Assets/Menu/Buttons/Play.png");
     if (!volBtnImage) volBtnImage = CP_Image_Load("Assets/Menu/Buttons/Volume.png");
-    if (!creditBtnImage) creditBtnImage = CP_Image_Load("Assets/Menu/Buttons/credit.png");
-    if (!digipenLogoImage) digipenLogoImage = CP_Image_Load("Assets/Other/digipen.png");
-    if (!buildlabLogoImage) buildlabLogoImage = CP_Image_Load("Assets/Other/buildlab.png");
     if (!transitionImage) transitionImage = CP_Image_Load("Assets/Other/Transition.png");
     if (!settingsBtnImage) settingsBtnImage = CP_Image_Load("Assets/Menu/Buttons/Settings.png");
     if (!clickSnd) clickSnd = CP_Sound_Load("Assets/Sound/button_click.wav");
@@ -156,10 +132,7 @@ void menu_init(void) {
     apply_volumes(); // defined in utils.c
 
     // Clean page state on every entry (including quit-to-menu returns).
-    // Splash restarts only on first exe run — returns to menu skip it.
-    if (!splashShown) { splashStage = 0; splashT = 0.0f; }
     showSettings = false;
-    showCredits = false;
     showSkins = false;
     showQuitConfirm = false;
     menuTransitionPhase = 2;
@@ -171,9 +144,6 @@ void menu_update(void) {
     // Keep the logical screen in sync with the fullscreen (or resized) window
     screenW = (float)CP_System_GetWindowWidth();
     screenH = (float)CP_System_GetWindowHeight();
-
-    // Splash screens first (exe start only); main menu after stage 2
-    if (splashStage < 2) { update_splash(); return; }
 
     // Clear screen and draw menu background (with animation going downwards)
     CP_Graphics_ClearBackground(CP_Color_Create(0, 0, 0, 255));
@@ -213,58 +183,6 @@ void menu_update(void) {
     draw_menu_ui();
     if (menuTransitionPhase == 0) handle_menu_input();
     draw_menu_transition();
-}
-
-// Splash timer + skip: each stage lasts SPLASH_TIME seconds, any key or
-// click jumps early to the next screen. Timer-based so a missing image can
-// splashStage = 0 (Digipen Logo), then increase by 1 (Buildlab logo), then increase again (2 == go main menu)
-static void update_splash(void) {
-    splashT += CP_System_GetDt();
-    if (CP_Input_MouseClicked() || CP_Input_KeyTriggered(KEY_SPACE)
-        || CP_Input_KeyTriggered(KEY_ENTER) || CP_Input_KeyTriggered(KEY_ESCAPE)) {
-        splashT = 0.0f;
-        splashStage++;
-    }
-    else if (splashT >= SPLASH_TIME) {
-        splashT = 0.0f;
-        splashStage++;
-    }
-    // if digipen logo and buildlab logo finish showing, then it enters main menu.
-    if (splashStage >= 2) { splashShown = true; return; }
-    draw_splash();
-}
-
-// DigiPen logo Splash screen
-static void draw_splash(void) {
-    CP_Graphics_ClearBackground(CP_Color_Create(0, 0, 0, 255));
-
-    float centerX = SCREEN_WIDTH * 0.5f;
-    CP_Image logo = (splashStage == 0) ? digipenLogoImage : buildlabLogoImage;
-    if (logo) {
-        float lw = (float)CP_Image_GetWidth(logo);
-        float lh = (float)CP_Image_GetHeight(logo);
-        // Per-stage height: DigiPen 220px is perfect; the team logo's art is
-        // smaller, so it draws at 330px. Aspect is still kept either way.
-        float lhDraw = (splashStage == 0) ? 220.0f : 330.0f;
-        float lwDraw = (lh > 0.0f) ? lhDraw * lw / lh : 440.0f;
-        if (lwDraw > SCREEN_WIDTH * 0.8f) {  // very wide logo: fit width instead
-            lwDraw = SCREEN_WIDTH * 0.8f;
-            lhDraw = (lw > 0.0f) ? lwDraw * lh / lw : 110.0f;
-        }
-        CP_Image_Draw(logo, centerX - lwDraw * 0.5f, 330.0f - lhDraw * 0.5f, lwDraw, lhDraw, 255);
-    }
-
-    if (gameFont) CP_Font_Set(gameFont);
-    CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
-    if (splashStage == 0) {
-        CP_Settings_Fill(CP_Color_Create(200, 200, 200, 255));
-        CP_Settings_TextSize(30.0f);
-        CP_Font_DrawText("All content (c) 2026 DigiPen Institute of Technology Singapore.", centerX, 560.0f);
-        CP_Font_DrawText("All Rights Reserved.", centerX, 600.0f);
-    }
-    CP_Settings_Fill(CP_Color_Create(120, 120, 120, 255));
-    CP_Settings_TextSize(24.0f);
-    CP_Font_DrawText("Press any key to skip", centerX, SCREEN_HEIGHT - 60.0f);
 }
 
 void menu_exit(void) {
@@ -308,31 +226,6 @@ static void draw_menu_ui(void) {
         CP_Settings_TextSize(panelH * 0.056f);
         CP_Font_DrawText("Click anywhere on card to go BACK", centerX, panelTop + panelH * 0.73f);
     }
-    else if (showCredits) {
-        // --- CREDITS PAGE (info from credit.md in project root) ---
-        if (digipenLogoImage) {  
-            float lw = (float)CP_Image_GetWidth(digipenLogoImage);
-            float lh = (float)CP_Image_GetHeight(digipenLogoImage);
-            float lhDraw = 50.0f, lwDraw = (lh > 0.0f) ? 50.0f * lw / lh : 150.0f;
-            CP_Image_Draw(digipenLogoImage, centerX - lwDraw * 0.5f, panelTop + panelH * 0.05f, lwDraw, lhDraw, 255);
-        }
-
-        CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
-        CP_Settings_TextSize(panelH * 0.048f);
-        CP_Font_DrawText("All content (c) 2026 DigiPen Institute of Technology Singapore.", centerX, panelTop + panelH * 0.2f);
-        CP_Font_DrawText("All Rights Reserved.", centerX, panelTop + panelH * 0.25f);
-        CP_Font_DrawText("Team: Joshua Soh, A K Ahmed Arshad,", centerX, panelTop + panelH * 0.35f);
-        CP_Font_DrawText("Eoghan Loke, Tran Cong Vinh", centerX, panelTop + panelH * 0.4f);
-        CP_Font_DrawText("Instructors: Gerald Wong, Dr. Soroor, Tommy Tan", centerX, panelTop + panelH * 0.5f);
-        CP_Font_DrawText("President: Claude Comair", centerX, panelTop + panelH * 0.63f);
-        CP_Font_DrawText("Executives: CHU Jason Yeu Tat, Michael GATS, TAN Chek Ming, ", centerX, panelTop + panelH * 0.75f);
-        CP_Font_DrawText("Prasanna Kumar GHALI, Mandy WONG, Johnny DEEK", centerX, panelTop + panelH * 0.8f);
-        
-   
-        CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
-        CP_Settings_TextSize(panelH * 0.056f);
-        CP_Font_DrawText("Click anywhere on card to go BACK", centerX, panelTop + panelH * 0.95f);
-    }
     else {
         // --- MAIN MENU OVERLAY ---
         CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
@@ -375,16 +268,10 @@ static void draw_menu_ui(void) {
             }
         }
 
-        // Second row: CREDIT + SKIN picker, side by side under the first row.
+        // Skin picker is centered on the second row.
         float row2Y = btnY + 130.0f;
         float row2LabelY = labelY + 130.0f;
-        float creditX = centerX - (btnSize * 0.5f) - btnOffset * 0.5f;
-        float skinX = centerX - (btnSize * 0.5f) + btnOffset * 0.5f;
-
-        if (creditBtnImage) {
-            CP_Image_Draw(creditBtnImage, creditX, row2Y, btnSize, btnSize, 255);
-            CP_Font_DrawText("Credit", creditX + btnSize * 0.5f, row2LabelY); // text below the credit icon
-        }
+        float skinX = centerX - btnSize * 0.5f;
 
         // Skin button: portrait of the currently selected character, so the
         // player can see the active skin before opening the picker.
@@ -415,6 +302,9 @@ static void draw_menu_ui(void) {
 // Quit-confirm popup (main menu only): dim + cream card + YES / NO.
 static void draw_quit_confirm(void) {
     if (!showQuitConfirm) return;
+    float centerX = SCREEN_WIDTH * 0.5f;
+    float yesX = centerX - 220.0f;
+    float noX = centerX + 60.0f;
 
     // Dark overlay over the menu (same look as the pause menu dim)
     CP_Settings_RectMode(CP_POSITION_CORNER);
@@ -423,39 +313,39 @@ static void draw_quit_confirm(void) {
 
     // Card
     // Format: (x-axis, y-axis, width, height)
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 360.0f, 560.0f, 250.0f);
+    draw_cream_panel(centerX, 360.0f, 560.0f, 250.0f);
     if (gameFont) CP_Font_Set(gameFont);
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(52.0f);
-    CP_Font_DrawText("QUIT GAME?", SCREEN_WIDTH * 0.5f, 300.0f);
+    CP_Font_DrawText("QUIT GAME?", centerX, 300.0f);
 
     CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255)); // Dark charcoal gray text color
     CP_Settings_TextSize(30.0f);
-    CP_Font_DrawText("Are you sure you want to quit?", SCREEN_WIDTH * 0.5f, 348.0f);
+    CP_Font_DrawText("Are you sure you want to quit?", centerX, 348.0f);
 
     // YES / NO buttons (hover highlight + label, pause-menu style)
     CP_Settings_RectMode(CP_POSITION_CORNER);
     // Format: is_mouse_over(x-axis, y-axis, rect width, rect height)
     // Check if mouse is over "YES" or "NO" button for "QUIT menu" card.
-    if (is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f)) { // "Yes" button
+    if (is_mouse_over(yesX, 404.0f, 160.0f, 52.0f)) { // "Yes" button
         // draw orange near-transparent color rect when user mouse hovers over it
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(580.0f, 404.0f, 160.0f, 52.0f);
+        CP_Graphics_DrawRect(yesX, 404.0f, 160.0f, 52.0f);
     }
-    if (is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f)) { // "NO" Button
+    if (is_mouse_over(noX, 404.0f, 160.0f, 52.0f)) { // "NO" Button
         // draw orange near-transparent color rect when user mouse hovers over it
         CP_Settings_Fill(CP_Color_Create(215, 140, 40, 90));
-        CP_Graphics_DrawRect(860.0f, 404.0f, 160.0f, 52.0f);
+        CP_Graphics_DrawRect(noX, 404.0f, 160.0f, 52.0f);
     }
 
     CP_Settings_TextSize(38.0f);
     // Change Text "Yes" or "No" color from dark charcoal gray to Orange if mouse hover over one of them. Else, they stayed dark charcoal gray.
-    CP_Settings_Fill(is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("YES", (1320.0f * 0.5f), 430);
-    CP_Settings_Fill(is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
-    CP_Font_DrawText("NO", (1880 * 0.5f), 430);
+    CP_Settings_Fill(is_mouse_over(yesX, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("YES", yesX + 80.0f, 430);
+    CP_Settings_Fill(is_mouse_over(noX, 404.0f, 160.0f, 52.0f) ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
+    CP_Font_DrawText("NO", noX + 80.0f, 430);
 }
 
 // Handles input during the menu screen (PLAY/SPACE enters the game immediately)
@@ -464,7 +354,7 @@ static void handle_menu_input(void) {
     // Y / ENTER confirms quit, N cancels. Popup blocks SPACE-start below.
     if (CP_Input_KeyTriggered(KEY_ESCAPE)) {
         if (showQuitConfirm) showQuitConfirm = false;
-        else if (!showSettings && !showCredits) {
+        else if (!showSettings) {
             showQuitConfirm = true;
             if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
         }
@@ -478,7 +368,7 @@ static void handle_menu_input(void) {
     }
 
     if (CP_Input_KeyTriggered(KEY_SPACE) &&
-        !showQuitConfirm && !showSettings && !showCredits && !showSkins) {
+        !showQuitConfirm && !showSettings && !showSkins) {
         play_click();
         start_menu_transition(MENU_TRANSITION_GAME);
     }
@@ -486,10 +376,11 @@ static void handle_menu_input(void) {
     if (CP_Input_MouseClicked()) {
         // Popup open: only YES / NO count; menu buttons underneath are blocked.
         if (showQuitConfirm) {
-            if (is_mouse_over(580.0f, 404.0f, 160.0f, 52.0f)) {
+            float centerX = SCREEN_WIDTH * 0.5f;
+            if (is_mouse_over(centerX - 220.0f, 404.0f, 160.0f, 52.0f)) {
                 CP_Engine_Terminate();  // YES: quit the game
             }
-            else if (is_mouse_over(860.0f, 404.0f, 160.0f, 52.0f)) {
+            else if (is_mouse_over(centerX + 60.0f, 404.0f, 160.0f, 52.0f)) {
                 showQuitConfirm = false;  // NO: back to menu
                 play_click();
             }
@@ -500,11 +391,10 @@ static void handle_menu_input(void) {
         float panelH = SCREEN_HEIGHT * 0.70f;
         float panelTop = SCREEN_HEIGHT * 0.5f - panelH * 0.5f;
 
-        if (showSettings || showCredits) {
+        if (showSettings) {
             if (is_mouse_over(centerX - (panelW * 0.5f), panelTop, panelW, panelH)) {
                 play_click();
                 if (showSettings) start_menu_transition(MENU_TRANSITION_SETTINGS_CLOSE);
-                if (showCredits) start_menu_transition(MENU_TRANSITION_CREDITS_CLOSE);
             }
         }
         else {
@@ -514,11 +404,9 @@ static void handle_menu_input(void) {
 
             float playX = centerX - (btnSize * 0.5f);
             float volX = playX - btnOffset;
-            // Second row is CREDIT + SKIN side by side (see draw_menu_ui);
-            // keep these boxes identical to the draw calls.
+            // Match the centered skin button in draw_menu_ui.
             float row2Y = btnY + 130.0f;
-            float creditX = centerX - (btnSize * 0.5f) - btnOffset * 0.5f;
-            float skinX = centerX - (btnSize * 0.5f) + btnOffset * 0.5f;
+            float skinX = centerX - btnSize * 0.5f;
             float settingsX = playX + btnOffset;
 
             if (is_mouse_over(playX, btnY, btnSize, btnSize)) {
@@ -537,12 +425,6 @@ static void handle_menu_input(void) {
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
                 play_click();
                 start_menu_transition(MENU_TRANSITION_SETTINGS_OPEN);
-            }
-
-            if (is_mouse_over(creditX, row2Y, btnSize, btnSize)) {
-                if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
-                start_menu_transition(MENU_TRANSITION_CREDITS_OPEN);
-                play_click();
             }
 
             // Skin button: opens the character picker (default blue astronaut).

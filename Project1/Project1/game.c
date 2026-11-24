@@ -798,29 +798,31 @@ void game_update(void) {
 
         // Level complete overlay (End object reached)
         if (levelComplete) {
-            draw_cream_panel(SCREEN_WIDTH * 0.5f, SCREEN_HEIGHT * 0.5f, 560.0f, 280.0f);
+            float centerX = SCREEN_WIDTH * 0.5f;
+            float centerY = SCREEN_HEIGHT * 0.5f;
+            draw_cream_panel(centerX, centerY, 560.0f, 280.0f);
             if (gameFont) CP_Font_Set(gameFont);
             CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
             CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
             CP_Settings_TextSize(58.0f);
-            CP_Font_DrawText("LEVEL COMPLETE", SCREEN_WIDTH * 0.5f, 400.0f);
+            CP_Font_DrawText("LEVEL COMPLETE", centerX, centerY - 50.0f);
             {
                 char scoreText[32];
                 char highText[48];
                 CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
                 CP_Settings_TextSize(30.0f);
                 snprintf(scoreText, sizeof(scoreText), "SCORE  %d", score);
-                CP_Font_DrawText(scoreText, SCREEN_WIDTH * 0.5f, 448.0f);
+                CP_Font_DrawText(scoreText, centerX, centerY - 2.0f);
                 snprintf(highText, sizeof(highText), "%s  %d",
                          newHighScore ? "NEW HIGH SCORE" : "HIGH SCORE", highScore);
                 CP_Settings_Fill(newHighScore
                                  ? CP_Color_Create(215, 140, 40, 255)
                                  : CP_Color_Create(120, 120, 120, 255));
-                CP_Font_DrawText(highText, SCREEN_WIDTH * 0.5f, 484.0f);
+                CP_Font_DrawText(highText, centerX, centerY + 34.0f);
             }
             CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
             CP_Settings_TextSize(26.0f);
-            CP_Font_DrawText("Click anywhere to return to menu", SCREEN_WIDTH * 0.5f, 545.0f);
+            CP_Font_DrawText("Click anywhere to return to menu", centerX, centerY + 95.0f);
             if (CP_Input_MouseClicked()) {
                 request_menu_transition();
                 if (windowOpenSnd) CP_Sound_Play(windowOpenSnd);
@@ -889,11 +891,6 @@ void game_exit(void) {
     if (playBtnImage) CP_Image_Free(playBtnImage);
     if (volBtnImage) CP_Image_Free(volBtnImage);
     playBtnImage = NULL; volBtnImage = NULL;
-    if (creditBtnImage) CP_Image_Free(creditBtnImage);
-    if (digipenLogoImage) CP_Image_Free(digipenLogoImage);
-    creditBtnImage = NULL; digipenLogoImage = NULL;
-    if (buildlabLogoImage) CP_Image_Free(buildlabLogoImage);
-    buildlabLogoImage = NULL;
     if (bgImage) CP_Image_Free(bgImage);
     if (gameFont) CP_Font_Free(gameFont);
     if (transitionImage) CP_Image_Free(transitionImage);

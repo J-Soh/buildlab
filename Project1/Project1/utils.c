@@ -12,7 +12,7 @@
 #include "game.h"    // reset_run (hurt_player death path; defined in game.c)
 
 
-// --- Shared canvas (fixed 1600x900 window, synced to live window) ---
+// --- Shared canvas dimensions (synced to the fullscreen window) ---
 float screenW = 1600.0f, screenH = 900.0f;
 
 // --- Scrolling backdrop + shared font ---

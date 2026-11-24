@@ -93,10 +93,12 @@ void quiz_update(float dt) {
 void quiz_handle_input(void) {
     if (!CP_Input_MouseClicked()) return;
 
+    float centerX = SCREEN_WIDTH * 0.5f;
     if (needBuffPick) {
+        float buttonX = centerX - 340.0f;
         for (int i = 0; i < 2; i++) {
             float ry = 300.0f + (float)i * 100.0f;
-            if (is_mouse_over(460.0f, ry, 680.0f, 84.0f)) {
+            if (is_mouse_over(buttonX, ry, 680.0f, 84.0f)) {
                 apply_buff(i);
                 play_click();
                 return;
@@ -106,9 +108,10 @@ void quiz_handle_input(void) {
     }
 
     if (!currentQ) return;
+    float buttonX = centerX - 290.0f;
     for (int i = 0; i < 4; i++) {
         float ry = 360.0f + (float)i * 62.0f;
-        if (!is_mouse_over(510.0f, ry, 580.0f, 52.0f)) continue;
+        if (!is_mouse_over(buttonX, ry, 580.0f, 52.0f)) continue;
         play_click();
         if (i == currentQ->answerIdx) {
             needBuffPick = true;   // correct -> choose a reward
@@ -133,24 +136,26 @@ void quiz_draw_toast(void) {
 }
 
 static void draw_question_panel(void) {
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 450.0f, 780.0f, 560.0f);
+    float centerX = SCREEN_WIDTH * 0.5f;
+    float buttonX = centerX - 290.0f;
+    draw_cream_panel(centerX, 450.0f, 780.0f, 560.0f);
     if (gameFont) CP_Font_Set(gameFont);
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(44.0f);
-    CP_Font_DrawText("CHECKPOINT QUIZ", SCREEN_WIDTH * 0.5f, 230.0f);
+    CP_Font_DrawText("CHECKPOINT QUIZ", centerX, 230.0f);
 
     CP_Settings_Fill(CP_Color_Create(40, 40, 40, 255));
     CP_Settings_TextSize(36.0f);
-    CP_Font_DrawText(currentQ->question, SCREEN_WIDTH * 0.5f, 310.0f);
+    CP_Font_DrawText(currentQ->question, centerX, 310.0f);
 
     for (int i = 0; i < 4; i++) {
         float ry = 360.0f + (float)i * 62.0f;
-        bool hover = is_mouse_over(510.0f, ry, 580.0f, 52.0f);
+        bool hover = is_mouse_over(buttonX, ry, 580.0f, 52.0f);
         CP_Settings_RectMode(CP_POSITION_CORNER);
         CP_Settings_Fill(hover ? CP_Color_Create(215, 140, 40, 90) : CP_Color_Create(40, 40, 40, 25));
-        CP_Graphics_DrawRect(510.0f, ry, 580.0f, 52.0f);
+        CP_Graphics_DrawRect(buttonX, ry, 580.0f, 52.0f);
         CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
         CP_Settings_TextSize(28.0f);
         CP_Font_DrawText(currentQ->choices[i], SCREEN_WIDTH * 0.5f, ry + 26.0f);
@@ -163,25 +168,27 @@ static void draw_buff_panel(void) {
         "+2 Max Hearts  |  Enemies 20% Faster",
         "+20% Move Speed",
     };
-    draw_cream_panel(SCREEN_WIDTH * 0.5f, 450.0f, 760.0f, 560.0f);
+    float centerX = SCREEN_WIDTH * 0.5f;
+    float buttonX = centerX - 340.0f;
+    draw_cream_panel(centerX, 450.0f, 760.0f, 560.0f);
     if (gameFont) CP_Font_Set(gameFont);
     CP_Settings_TextAlignment(CP_TEXT_ALIGN_H_CENTER, CP_TEXT_ALIGN_V_MIDDLE);
 
     CP_Settings_Fill(CP_Color_Create(180, 50, 40, 255));
     CP_Settings_TextSize(44.0f);
-    CP_Font_DrawText("CORRECT! CHOOSE A BUFF", SCREEN_WIDTH * 0.5f, 220.0f);
+    CP_Font_DrawText("CORRECT! CHOOSE A BUFF", centerX, 220.0f);
 
     for (int i = 0; i < 2; i++) {
         float ry = 300.0f + (float)i * 100.0f;
-        bool hover = is_mouse_over(460.0f, ry, 680.0f, 84.0f);
+        bool hover = is_mouse_over(buttonX, ry, 680.0f, 84.0f);
         CP_Settings_RectMode(CP_POSITION_CORNER);
         CP_Settings_Fill(hover ? CP_Color_Create(215, 140, 40, 90) : CP_Color_Create(40, 40, 40, 25));
-        CP_Graphics_DrawRect(460.0f, ry, 680.0f, 84.0f);
+        CP_Graphics_DrawRect(buttonX, ry, 680.0f, 84.0f);
         CP_Settings_Fill(hover ? CP_Color_Create(180, 50, 40, 255) : CP_Color_Create(40, 40, 40, 255));
         CP_Settings_TextSize(30.0f);
-        CP_Font_DrawText(names[i], SCREEN_WIDTH * 0.5f, ry + 26.0f);
+        CP_Font_DrawText(names[i], centerX, ry + 26.0f);
         CP_Settings_TextSize(18.0f);
-        CP_Font_DrawText(descs[i], SCREEN_WIDTH * 0.5f, ry + 60.0f);
+        CP_Font_DrawText(descs[i], centerX, ry + 60.0f);
     }
 }
 

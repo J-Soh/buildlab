@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include "cprocessing.h"
 
-// Fixed 1600x900 window (no scaling: UI numbers are used as-is)
+// Fullscreen canvas dimensions, refreshed from the live window each frame
 extern float screenW, screenH;
 #define SCREEN_WIDTH (screenW)
 #define SCREEN_HEIGHT (screenH)

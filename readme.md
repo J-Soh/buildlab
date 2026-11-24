@@ -12,12 +12,9 @@
 - F3: advance one frame while paused
 - F4: rewind to a previous snapshot
 
-
-
 ---
 
 ### Copyright info:
-- buildlab logo created by us.
 - Sounds (step.wav, jump.wav, respawn.wav, player_hit.wav, hit.wav, death.wav, coin.wav, button_click.wav) created from https://www.bfxr.net/
 - Background music: https://freesound.org/people/szegvari/sounds/595750/, menu music: https://freesound.org/people/Sunsai/sounds/415805/
 - Game visual asserts (player, map level, enemies, trap design) from https://kenney.nl/assets
@@ -33,10 +30,6 @@
 - Controls:
     - Space to jump.
     - A & D to move left and right.
-
-- How level design map is produced:
-    - Map was pre-rendered with map.png exported from tile editor.
-    - Enemies (Rino, chicken, Bat), traps (saw), checkpoints are marked in tile editor. So this is exported as map.json, which is then extracted into the game coordinates for each items.
  
 
 ---
