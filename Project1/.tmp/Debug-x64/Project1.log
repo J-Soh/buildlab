@@ -1,12 +1,12 @@
 ﻿  entity.c
   extract.c
   game.c
-C:\Workflow\VisualStudio\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(16,9): warning C4005: 'false': macro redefinition
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(16,9): warning C4005: 'false': macro redefinition
   (compiling source file 'extract.c')
       C:\Workflow\Repo\buildlab\Project1\Project1\cJSON.c(70,9):
       see previous definition of 'false'
   
-C:\Workflow\VisualStudio\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(17,9): warning C4005: 'true': macro redefinition
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(17,9): warning C4005: 'true': macro redefinition
   (compiling source file 'extract.c')
       C:\Workflow\Repo\buildlab\Project1\Project1\cJSON.c(65,9):
       see previous definition of 'true'
@@ -17,7 +17,7 @@ C:\Workflow\VisualStudio\Community\VC\Tools\MSVC\14.51.36231\include\stdbool.h(1
   player.c
   quiz.c
   skin.c
-C:\Workflow\Repo\buildlab\Project1\Project1\skin.c(59,6): warning C4029: declared formal parameter list different from definition
+C:\Workflow\Repo\buildlab\Project1\Project1\skin.c(77,6): warning C4029: declared formal parameter list different from definition
   utils.c
   Generating Code...
   LINK : C:\Workflow\Repo\buildlab\Project1\bin\Debug-x64\Project1.exe not found or not built by the last incremental link; performing full link

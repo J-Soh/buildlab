@@ -20,7 +20,7 @@
 - buildlab logo created by us.
 - Sounds (step.wav, jump.wav, respawn.wav, player_hit.wav, hit.wav, death.wav, coin.wav, button_click.wav) created from https://www.bfxr.net/
 - Background music: https://freesound.org/people/szegvari/sounds/595750/, menu music: https://freesound.org/people/Sunsai/sounds/415805/
-- Game visual asserts (player, map level, enemies, trap design) from https://kenney.nl/assets
+- Game visual asserts (player, map level, enemies, trap design) from https://pixelfrog-assets.itch.io/pixel-adventure-1
 - External libraries used: cJSON.c file
 - External graphic tool used: Tiled editor
 

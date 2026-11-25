@@ -11,7 +11,6 @@
     - Once user press space-bar or click “play” button on menu.c, it will enter into `game.c` which is the gameplay.
     - If user wants to exit (ESC key), a design rectangular shape card comes up (`draw_quit_confirm()`) for confirmation to quit.
 
-
 `game.c`: the main gameplay where player must reach the finishing line to beat the game. It owns the game loop + HUD + lifecycle, and calls into the other .c files:
 - workflow: start at `game_init()` (load gameplay art, `load_map_json()` from `extract.c`, find Start pos) > `game_update()` per frame > `game_exit()` (free everything + NULLs).
     - Design: game screen is layered draws — `draw_background()` > `render_map_json()` > `render_entities()` > `draw_bullets()` > `render_player()` > hearts HUD.
